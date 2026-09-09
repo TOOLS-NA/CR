@@ -1,0 +1,16 @@
+{
+  "name": "CRV — Compte rendu de visite",
+  "short_name": "CRV",
+  "description": "Compte rendu de visite magasin : chiffres, analyse, plan d'action, restitution.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F4F6F9",
+  "theme_color": "#0E2C49",
+  "lang": "fr",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
