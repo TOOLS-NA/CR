@@ -1,0 +1,2690 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E2C49">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CRV">
+<title>CRV — Compte rendu de visite</title>
+<style>
+:root{
+  --navy:#0E2C49;
+  --navy-soft:#1B3E62;
+  --bleu:#1E73BE;
+  --vert:#1C9C73;
+  --rouge:#C0392B;
+  --ambre:#E08A2E;
+  --fond:#F4F6F9;
+  --papier:#FFFFFF;
+  --encre:#16222E;
+  --gris:#6B7A88;
+  --trait:#DCE3EA;
+  --r:6px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--fond);
+  color:var(--encre);
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+/* ---------- en-tête ---------- */
+header{
+  position:sticky;top:0;z-index:50;
+  background:var(--navy);color:#fff;
+  border-bottom:3px solid var(--bleu);
+}
+.hwrap{max-width:1080px;margin:0 auto;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.mark{font-weight:700;letter-spacing:.02em;font-size:17px;white-space:nowrap}
+.mark span{color:#8FC0EC;font-weight:400}
+header select,header input[type=date]{
+  background:var(--navy-soft);color:#fff;
+  border:1px solid #37587E;border-radius:var(--r);padding:7px 9px;font:inherit;font-size:14px;
+}
+header select{flex:1 1 240px;min-width:0}
+.hactions{margin-left:auto;display:flex;gap:8px}
+.hbtn{background:var(--bleu);color:#fff;border:0;border-radius:var(--r);padding:8px 13px;font:inherit;font-weight:600;cursor:pointer}
+.hbtn.ghost{background:transparent;border:1px solid #37587E}
+.hbtn:hover{filter:brightness(1.08)}
+.jauge{width:100%;height:3px;background:#37587E;border-radius:2px;overflow:hidden}
+.jauge i{display:block;height:100%;width:0;background:var(--vert);transition:width .3s}
+
+/* ---------- structure ---------- */
+main{max-width:1080px;margin:0 auto;padding:20px 16px 80px}
+section{
+  background:var(--papier);
+  border:1px solid var(--trait);
+  border-left:4px solid var(--navy);
+  border-radius:var(--r);
+  padding:16px 18px;
+  margin-bottom:14px;
+}
+section.pilote{border-left-color:var(--bleu)}
+section.actions{border-left-color:var(--vert)}
+h2{
+  margin:0 0 4px;font-size:16px;font-weight:700;color:var(--navy);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+}
+h2 .compte{font-size:12px;font-weight:600;color:var(--gris)}
+.sous{margin:0 0 14px;font-size:13px;color:var(--gris)}
+.lien{background:none;border:0;color:var(--bleu);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer;padding:0}
+
+label.champ{display:block;font-size:12px;font-weight:600;color:var(--gris);margin-bottom:4px}
+textarea,input[type=text],input[type=number],input[type=date],select{
+  width:100%;font:inherit;color:var(--encre);
+  border:1px solid var(--trait);border-radius:var(--r);
+  padding:8px 10px;background:#fff;
+}
+textarea{resize:vertical;min-height:70px;line-height:1.45}
+textarea:focus,input:focus,select:focus{outline:2px solid var(--bleu);outline-offset:1px;border-color:var(--bleu)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
+
+/* ---------- import ---------- */
+.puces{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.puce{font-size:12px;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid var(--trait);color:var(--gris);background:#fff}
+.puce.ok{background:var(--vert);border-color:var(--vert);color:#fff}
+label.imp{margin-left:auto;display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  background:var(--bleu);color:#fff;border-radius:var(--r);padding:5px 13px;font-size:13px;font-weight:600;white-space:nowrap}
+label.imp:hover{filter:brightness(1.08)}
+label.imp input{display:none}
+.sousimp{margin:0 0 12px;font-size:12.5px}
+h3.sousTitre{margin:16px 0 6px;font-size:13px;font-weight:700;color:var(--gris)}
+h3.sousTitre:first-of-type{margin-top:4px}
+#listeDictees{margin-top:11px}
+.dit{display:flex;gap:9px;align-items:flex-start;border-top:1px solid var(--trait);padding:8px 0;font-size:13.5px}
+.dit .qui{font-weight:700;color:var(--navy);white-space:nowrap}
+.dit .txt{flex:1}
+h2 .lien{margin-left:auto;font-weight:600;white-space:nowrap}
+h2{justify-content:flex-start}
+
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:720px){.duo{grid-template-columns:1fr}}
+.barre{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:12px}
+.btn{background:var(--bleu);color:#fff;border:0;border-radius:var(--r);padding:9px 16px;font:inherit;font-weight:600;cursor:pointer}
+.btn.sec{background:#fff;color:var(--navy);border:1px solid var(--trait)}
+.btn:hover{filter:brightness(1.06)}
+.etat{font-size:13px;color:var(--gris)}
+.etat.ko{color:var(--rouge);font-weight:600}
+.etat.ok{color:var(--vert);font-weight:600}
+
+/* ---------- tableaux de perf ---------- */
+.tb{width:100%;border-collapse:collapse;margin-top:6px}
+.tb th{
+  text-align:right;font-size:11.5px;font-weight:700;color:var(--gris);
+  padding:6px 8px;border-bottom:1px solid var(--trait);
+}
+.tb th:first-child{text-align:left}
+.tb td{padding:7px 8px;border-bottom:1px solid #EEF2F6;text-align:right}
+.tb td:first-child{text-align:left;font-weight:600;color:var(--navy)}
+.tb tr:last-child td{border-bottom:0}
+.tb .saisie{width:100%;border:1px solid transparent;background:#F8FAFC;text-align:right;padding:5px 7px;border-radius:4px;font:inherit;font-variant-numeric:tabular-nums}
+.tb .saisie:hover{border-color:var(--trait)}
+.d{font-weight:700;font-variant-numeric:tabular-nums}
+.d.pos{color:var(--vert)}
+.d.neg{color:var(--rouge)}
+.d.neu{color:var(--gris)}
+.tb td.raf{color:var(--gris);font-size:13px}
+
+/* ---------- analyse ---------- */
+.constat{
+  border:1px solid var(--trait);border-left:3px solid var(--gris);
+  border-radius:var(--r);padding:11px 13px;margin-bottom:9px;background:#FBFCFD;
+}
+.constat.alerte{border-left-color:var(--rouge);background:#FDF6F5}
+.constat.vigilance{border-left-color:var(--ambre);background:#FEFAF3}
+.constat.favorable{border-left-color:var(--vert);background:#F4FBF8}
+.constat h3{margin:0 0 3px;font-size:14px;font-weight:700}
+.constat p{margin:0;font-size:13.5px;color:#37474F}
+.vide{color:var(--gris);font-size:13.5px;font-style:italic;margin:0}
+.tb.mini{margin:8px 0 4px;font-size:12.5px;min-width:560px}
+.tb.mini th{font-size:11px;padding:4px 6px}
+.tb.mini td{padding:4px 6px}
+.tb.mini tr.ecart td:first-child{font-weight:700}
+.second{font-size:11px;color:var(--gris);font-weight:400}
+.constat ul.leviers{margin:7px 0 0;padding-left:19px}
+.constat ul.leviers li{font-size:13.5px;color:#37474F;margin-bottom:3px}
+.constat p{margin:0 0 4px}
+
+/* ---------- blocs de contrôle ---------- */
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(215px,1fr));gap:9px;margin-bottom:12px}
+.point{border:1px solid var(--trait);border-radius:var(--r);padding:9px 10px;background:#FBFCFD}
+.point .nom{font-size:13px;font-weight:600;margin-bottom:6px}
+.seg{display:flex;gap:0;border:1px solid var(--trait);border-radius:5px;overflow:hidden;background:#fff}
+.seg button{
+  flex:1;border:0;background:#fff;color:var(--gris);
+  padding:6px 0;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;
+  border-right:1px solid var(--trait);
+}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"][data-v="OK"]{background:var(--vert);color:#fff}
+.seg button[aria-pressed="true"][data-v="KO"]{background:var(--rouge);color:#fff}
+.seg button[aria-pressed="true"][data-v="NC"]{background:var(--ambre);color:#fff}
+.paire{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.paire input{padding:5px 7px;font-size:13px}
+.paire label{font-size:11px;color:var(--gris);display:block;margin-bottom:2px}
+.solde{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;max-width:460px}
+.solde .val{font-size:17px;font-weight:700;color:var(--navy);padding-top:2px}
+
+/* ---------- dictée ---------- */
+.dictee{border:1px solid var(--trait);border-radius:var(--r);padding:12px 13px;background:#F8FBFE;margin-bottom:14px}
+.ligneMicro{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:9px}
+.btn.micro{display:inline-flex;align-items:center;gap:8px}
+.btn.micro::before{content:"";width:9px;height:9px;border-radius:50%;background:#fff;opacity:.55}
+.btn.micro.actif{background:var(--rouge)}
+.btn.micro.actif::before{opacity:1;animation:pouls 1.1s ease-in-out infinite}
+@keyframes pouls{0%,100%{transform:scale(1)}50%{transform:scale(1.6)}}
+.dictee textarea{min-height:88px;background:#fff}
+#reglages,#zoneColle{margin-top:12px;border-top:1px solid var(--trait);padding-top:11px}
+
+/* ---------- plan d'action ---------- */
+.pa{width:100%;border-collapse:collapse}
+.pa th{font-size:11.5px;color:var(--gris);text-align:left;padding:5px 6px;border-bottom:1px solid var(--trait);font-weight:700}
+.pa td{padding:5px 6px;border-bottom:1px solid #EEF2F6;vertical-align:top}
+.pa input,.pa select,.pa textarea{padding:6px 8px;font-size:13.5px}
+.pa textarea{min-height:52px}
+.sup{background:none;border:0;color:var(--gris);font-size:17px;cursor:pointer;line-height:1;padding:4px 6px}
+.sup:hover{color:var(--rouge)}
+.origine{font-size:11px;color:var(--gris);display:block;margin-top:3px}
+.enrobe{overflow-x:auto}
+.pa{min-width:720px}
+
+/* ---------- impression ---------- */
+@media print{
+  header{position:static}
+  .hactions,.barre,.sup,.lien,.noprint{display:none!important}
+  body{background:#fff;font-size:11.5px}
+  main{padding:0;max-width:none}
+  section{break-inside:avoid;box-shadow:none;margin-bottom:9px;padding:10px 12px}
+  textarea{border:1px solid #ccc;min-height:0;height:auto}
+  .pa{min-width:0}
+}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="mark">CRV <span>compte rendu de visite</span></div>
+    <select id="magasin" aria-label="Magasin"></select>
+    <input type="date" id="dateVisite" aria-label="Date de visite">
+    <div class="hactions">
+      <button class="hbtn ghost" onclick="remiseAZero()">RAZ</button>
+      <button class="hbtn ghost" onclick="exportJSON()">Enregistrer</button>
+      <button class="hbtn" onclick="window.print()">Imprimer</button>
+    </div>
+    <div class="jauge" title="Points de contrôle renseignés"><i id="jauge"></i></div>
+  </div>
+</header>
+
+<main>
+
+<!-- 1. CHIFFRES -->
+<!-- 1. PERFS ACCESSOIRES -->
+<section>
+  <h2>Perfs Accessoires — mois
+    <label class="imp" title="PDF Podium TAC, ou export Excel Perfs mois.">Import
+      <input type="file" accept=".pdf,.xlsx,.xlsm,.xls,.csv" onchange="importerFichier(this,'mois')">
+    </label>
+  </h2>
+  <p class="etat sousimp" id="etat_mois">PDF Podium TAC, ou export Excel Perfs mois.</p>
+  <table class="tb">
+    <thead><tr><th>Indicateur</th><th>N-1</th><th>Prév</th><th>Réalisé</th><th>RAF</th><th>Δ Prév</th><th>Δ N-1</th></tr></thead>
+    <tbody id="corpsMois"></tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Perfs Accessoires — saison à date
+    <label class="imp" title="Alimentée par le tableau « Exercice » du TAC, ou par l'export Excel Perfs saison.">Import
+      <input type="file" accept=".pdf,.xlsx,.xlsm,.xls,.csv" onchange="importerFichier(this,'saison')">
+    </label>
+  </h2>
+  <p class="etat sousimp" id="etat_saison">Alimentée par le tableau « Exercice » du TAC, ou par l'export Excel Perfs saison.</p>
+  <table class="tb">
+    <thead><tr><th>Indicateur</th><th>N-1</th><th>Prév</th><th>Réalisé</th><th>RAF</th><th>Δ Prév</th><th>Δ N-1</th></tr></thead>
+    <tbody id="corpsSaison"></tbody>
+  </table>
+</section>
+
+<!-- 2. PERFS PRESTATION -->
+<section>
+  <h2>Perfs Prestation — mois
+    <label class="imp" title="Alimentée par le TAC, ou par l'export Excel Presta mois.">Import
+      <input type="file" accept=".pdf,.xlsx,.xlsm,.xls,.csv" onchange="importerFichier(this,'prestaMois')">
+    </label>
+  </h2>
+  <p class="etat sousimp" id="etat_prestaMois">Alimentée par le TAC, ou par l'export Excel Presta mois.</p>
+  <table class="tb">
+    <thead><tr><th>Indicateur</th><th>N-1</th><th>Prév</th><th>Réalisé</th><th>RAF</th><th>Δ Prév</th><th>Δ N-1</th></tr></thead>
+    <tbody id="corpsPrestaMois"></tbody>
+  </table>
+</section>
+
+<section>
+  <h2>Perfs Prestation — saison à date
+    <label class="imp" title="Alimentée par le tableau « Exercice » du TAC, ou par l'export Excel Presta saison.">Import
+      <input type="file" accept=".pdf,.xlsx,.xlsm,.xls,.csv" onchange="importerFichier(this,'prestaSaison')">
+    </label>
+  </h2>
+  <p class="etat sousimp" id="etat_prestaSaison">Alimentée par le tableau « Exercice » du TAC, ou par l'export Excel Presta saison.</p>
+  <table class="tb">
+    <thead><tr><th>Indicateur</th><th>N-1</th><th>Prév</th><th>Réalisé</th><th>RAF</th><th>Δ Prév</th><th>Δ N-1</th></tr></thead>
+    <tbody id="corpsPrestaSaison"></tbody>
+  </table>
+</section>
+
+<!-- 3. COLLABORATEURS, avant l'OSS -->
+<section id="blocCollabMois">
+  <h2>Perfs collaborateurs — mois</h2>
+  <p class="sous">Issu du même fichier que les perfs magasin du mois. Seuls les collaborateurs avec un CA facturé supérieur à zéro sont retenus.</p>
+  <div class="enrobe">
+    <table class="tb" style="min-width:820px">
+      <thead id="enteteCollabMois"></thead>
+      <tbody id="corpsCollabMois"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="blocCollabSaison">
+  <h2>Perfs collaborateurs — saison à date</h2>
+  <p class="sous">Issu du même fichier que les perfs magasin de la saison.</p>
+  <div class="enrobe">
+    <table class="tb" style="min-width:820px">
+      <thead id="enteteCollabSaison"></thead>
+      <tbody id="corpsCollabSaison"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="pilote">
+  <h2>Analyse par collaborateur — Podium
+    <label class="imp" title="PDF classement Podium par famille GMDR.">Import
+      <input type="file" accept=".pdf" onchange="importerFichier(this,'gmdr')">
+    </label>
+  </h2>
+  <p class="etat sousimp" id="etat_gmdr">PDF classement Podium par famille GMDR.</p>
+  <div id="analyseCollab"></div>
+</section>
+
+<!-- 4. OSS -->
+<section>
+  <h2>OSS
+    <label class="imp" title="Export Excel OSS.">Import
+      <input type="file" accept=".pdf,.xlsx,.xlsm,.xls,.csv" onchange="importerFichier(this,'oss')">
+    </label>
+  </h2>
+  <p class="etat sousimp" id="etat_oss">Export Excel OSS.</p>
+
+  <h3 class="sousTitre">OSS par collaborateur</h3>
+  <div class="enrobe">
+    <table class="tb" style="min-width:640px">
+      <thead id="enteteOssCollab"></thead>
+      <tbody id="corpsOssCollab"></tbody>
+    </table>
+  </div>
+
+  <h3 class="sousTitre">Cumul magasin</h3>
+  <table class="tb">
+    <thead><tr><th>Indicateur</th><th>N-1</th><th>N</th><th>Évolution</th></tr></thead>
+    <tbody id="corpsOss"></tbody>
+  </table>
+</section>
+
+<section class="pilote">
+  <h2>Première analyse <span class="compte" id="compteConstats"></span></h2>
+  <p class="sous">Lecture croisée flux / panier / marge, recalculée à chaque modification de chiffre.</p>
+  <div id="analyse"><p class="vide">Intégrez les chiffres pour obtenir l'analyse.</p></div>
+</section>
+
+<!-- 4. CONTRÔLES -->
+<section>
+  <h2>Surface de vente</h2>
+  <div style="max-width:300px">
+    <label class="champ" for="impressionSV">Impression générale</label>
+    <select id="impressionSV">
+      <option value="">—</option><option>Propre</option><option>A parfaire</option><option>A revoir</option>
+    </select>
+  </div>
+  <div style="margin-top:12px">
+    <label class="champ" for="txtSV">Constat surface de vente</label>
+    <textarea id="txtSV"></textarea>
+  </div>
+</section>
+
+<section id="blocsControle"></section>
+
+<!-- 5. PLAN D'ACTION -->
+<section class="actions">
+  <h2>Plan d'action <span class="compte" id="comptePA"></span></h2>
+  <p class="sous">Dictez vos constats et vos actions au fil de la visite. Chaque dictée s'ajoute à la suivante et alimente le constat de la restitution.</p>
+
+  <div class="dictee noprint">
+    <div class="ligneMicro">
+      <button class="btn micro" id="btnMicro" onclick="basculerMicro()">Dicter une action</button>
+      <span class="etat" id="etatMicro">Parlez normalement : « constat », « action », « responsable », « pour le… », « indicateur ».</span>
+    </div>
+    <div style="max-width:280px;margin-bottom:9px">
+      <label class="champ" for="interlocuteur">Origine du propos</label>
+      <select id="interlocuteur"></select>
+    </div>
+    <textarea id="dictee" placeholder="La dictée s'écrit ici. Vous pouvez aussi taper directement."></textarea>
+    <div class="barre">
+      <button class="btn" onclick="mettreEnForme()">Intégrer au constat de visite</button>
+      <button class="btn sec" onclick="viderDictee()">Effacer</button>
+    </div>
+    <div id="listeDictees"></div>
+  </div>
+  <div class="enrobe">
+    <table class="pa">
+      <thead id="entetePA"></thead>
+      <tbody id="corpsPA"></tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 6. SYNTHÈSE -->
+<section class="actions">
+  <h2>Restitution</h2>
+  <p class="sous">Mail de restitution suivant la trame : constat, analyse, préconisations sur deux mois, trois priorités. 1000 mots maximum.</p>
+  <div class="barre" style="margin-top:0">
+    <button class="btn" onclick="composerRestitution()">Composer la restitution</button>
+    <span class="etat" id="motsRestitution"></span>
+  </div>
+  <textarea id="restitution" style="min-height:320px" oninput="majMots()" onchange="E.restitution=this.value;sauver()"></textarea>
+</section>
+
+<section class="actions">
+  <h2>Synthèse de visite</h2>
+  <p class="sous">Mail court adressé au magasin : tendance générale et trois priorités pour le mois à venir. 300 mots maximum.</p>
+  <div class="barre" style="margin-top:0">
+    <button class="btn" onclick="composerSynthese()">Composer la synthèse</button>
+    <span class="etat" id="motsSynthese"></span>
+  </div>
+  <textarea id="synthese" style="min-height:240px" oninput="majMotsSynthese()" onchange="E.synthese=this.value;sauver()"></textarea>
+</section>
+
+</main>
+
+<script>
+"use strict";
+
+/* ===== cadre du plan d'action et trame de restitution ===== */
+const CADRE = {
+  champs: [
+    {k:"constat",     nom:"Constat",     large:"26%", type:"texte"},
+    {k:"action",      nom:"Action",      large:"28%", type:"texte"},
+    {k:"responsable", nom:"Responsable", large:"12%", type:"ligne"},
+    {k:"echeance",    nom:"Échéance",    large:"12%", type:"date"},
+    {k:"indicateur",  nom:"Indicateur",  large:"12%", type:"ligne"},
+    {k:"priorite",    nom:"Priorité",    large:"8%",  type:"liste", options:["1","2","3"]}
+  ],
+  consigne: [
+    "Tu rédiges la restitution d'une journée de visite magasin pour un réseau d'accessoires de camping-car.",
+    "Une action = un constat factuel, une action concrète et vérifiable, un responsable, une échéance, un indicateur de suivi.",
+    "Le plan d'action porte sur les deux mois suivants. Reste dans le vocabulaire du réseau,",
+    "pas d'action floue du type « sensibiliser l'équipe »."
+  ].join(" "),
+  motsMax: 1000,
+  motsMaxSynthese: 300
+};
+
+/* la trame imposée par le plan de restitution */
+const TRAME = [
+  {k:"constat", nom:"Constat",
+   aide:"Mix entre le CR de visite et les échanges avec les interlocuteurs du site. Surface de vente et application du concept Narbonne Accessoires sur la base des plans merchandising."},
+  {k:"analyse", nom:"Analyse",
+   aide:"Perfs individuelles et globales du magasin, comparées à la tendance nationale. Sécurisation des KPI."},
+  {k:"preconisations", nom:"Préconisations / Plan d'action",
+   aide:"Pour les deux mois suivants."},
+  {k:"priorites", nom:"3 priorités",
+   aide:"Les trois enjeux à retenir."}
+];
+
+/* ===== COC qualité de service : actions correctives officielles par indice ===== */
+const COC = [
+  {k:"baba", nom:"B.A.B.A qualité magasin et atelier", actions:[
+    {a:"Veiller à la tenue du concept NA et du cadre d'accueil du client", o:"Les 9 engagements NA magasin"},
+    {a:"Veiller à la tenue du concept NA en atelier", o:"Les 10 raisons de nous faire confiance pour la pose"}]},
+  {k:"sqcOuverts", nom:"SQC ouverts sur nombre de factures",
+   contact:"Service Qualité Client — Marie-José Viala 87 74 ou Christine Bouriames 16 96", actions:[
+    {a:"Briefer et débriefer l'équipe sur les SQC en cours en réunion mensuelle, causes et effets", o:"Échanges de mail SQC"},
+    {a:"Mettre en place des correctifs immédiats quand le défaut vient d'une action magasin ou atelier, informer l'équipe en réunion hebdomadaire et suivre l'application", o:"Process traitement SQC — Intranet"}]},
+  {k:"sqcNonClotures", nom:"SQC non clôturés à date",
+   contact:"Service Qualité Client — Marie-José Viala 87 74 ou Christine Bouriames 16 96", actions:[
+    {a:"Prendre connaissance du dossier SQC dans la journée et envoyer les pièces au service", o:"Process traitement SQC"},
+    {a:"Décider d'une réponse sous 48 h et informer le client par téléphone, même sans réponse définitive"},
+    {a:"Vérifier le suivi des SQC 2 fois par semaine et relancer les services concernés", o:"Rendez-vous Outlook"},
+    {a:"Faire le point tous les 15 jours avec le service qualité client"}]},
+  {k:"rappelSqc", nom:"Rappels sur contact SQC déjà ouvert (VAD)", actions:[
+    {a:"Contacter le client sous 48 h pour accuser réception et donner une vision des suites"},
+    {a:"Annoncer clairement la suite donnée, accord ou refus argumenté, délais, et s'engager sur une date de reprise de contact", o:"Rendez-vous Outlook + process SQC"}]},
+  {k:"rappelWts", nom:"Rappels sur commandes WTS", contact:"BO DVA — Charlotte Annet 95 36", actions:[
+    {a:"Informer le client de sa commande sous 6 h ouvrées, préciser délais et approvisionnement, reprendre contact si le délai n'est pas tenu", o:"Mémo vendeur + rendez-vous Outlook"},
+    {a:"Briefer et débriefer l'équipe sur les commandes WTS en défaut en réunion mensuelle"},
+    {a:"Organiser une FO piqûre de rappel sur la prise en charge des commandes WTS"}]},
+  {k:"delaisWts", nom:"Délais WTS, déblocage et information",
+   contact:"BO DVA — Valérie Sumalla 15 00 ou Charlotte Annet 95 36", actions:[
+    {a:"Consulter la boîte mail DM 3 fois par jour, les commandes WTS sous X3 et l'imprimante ; affecter un collaborateur par jour à cette veille", o:"Mail d'alerte Outlook"},
+    {a:"Vérifier que tous les collaborateurs maîtrisent le traitement des commandes sous X3 et l'accueil des clients WTS", o:"Mémo vendeur WTS"},
+    {a:"Contrôler la rédaction du mail client et la présence du délai de disponibilité", o:"Mémo vendeur WTS"},
+    {a:"Organiser une FO pour tout collaborateur en défaut répété", o:"Mémo vendeur WTS"}]},
+  {k:"telephonie", nom:"Test téléphonie", contact:"BO DVA — Valérie Sumalla 15 00", actions:[
+    {a:"Faire connaître et appliquer la charte téléphonie : délai de décrochage, message d'accueil, boîte vocale à jour ; l'afficher et la mettre au brief 1 fois par semaine", o:"Charte téléphonie NA"},
+    {a:"S'assurer que chaque collaborateur a un téléphone sur lui à tout moment"},
+    {a:"Écouter la boîte vocale tous les jours et rappeler les clients dans la journée"}]},
+  {k:"google", nom:"Note Google",
+   contact:"Communication — Yann Millot-Christal 16 07 ou Elizabeth Raynaud 16 22", actions:[
+    {a:"Lancer une campagne de sensibilisation : inciter les clients satisfaits à laisser 5 étoiles"},
+    {a:"Animer la page Google : au moins 5 photos intérieur et 5 extérieur, une vidéo de 1 min 30 maximum, une description de 250 caractères, des posts réguliers"},
+    {a:"Ajouter un message en bas de facture incitant à noter 5 étoiles"}]},
+  {k:"cfid", nom:"Portefeuille porteurs de cartes", contact:"BO DVA — Charlotte Annet 95 36", actions:[
+    {a:"Suivre et communiquer les ventes de cartes en réunion hebdomadaire, magasin et par collaborateur, et matérialiser le suivi sur un tableau au bureau", o:"Reporting mensuel cartes, requête X3 CFID"},
+    {a:"Accompagner les collaborateurs en retard : identifier un défaut de comportement, de discours ou de process, et orienter vers l'outil ou la formation", o:"Brochure cartes, argumentaires, mémo vendeur, FO expert métier"},
+    {a:"Demander le fichier des clients des 3 derniers mois sans carte au-dessus de 150 € de panier et lancer une campagne de rappel"},
+    {a:"Veiller à la disponibilité de la PLV et des brochures cartes"}]},
+  {k:"dsc", nom:"Suivi client DSC", contact:"BO DVA — Charlotte Annet 95 36", actions:[
+    {a:"Suivre et communiquer en réunion hebdomadaire la création, le traitement et la transformation des DSC, et faire le lien avec le remplissage du planning atelier", o:"Reporting mensuel DSC"},
+    {a:"Distribuer chaque semaine les DSC en retard ou à relancer à chaque collaborateur", o:"Mail DM du mardi et du jeudi, agenda X3"},
+    {a:"Accompagner les collaborateurs en retard de traitement : dégager du temps d'appel et écouter le discours", o:"Scripts d'appel, book DSC, FO expert métier"},
+    {a:"Coacher en appel les collaborateurs dont le taux de transformation est inférieur à 30 %", o:"Reporting mensuel DSC"},
+    {a:"Contrôler au hasard 1 fois par semaine les feuilles de liaison : 1 feuille = 1 DSC, autant de DSC que de devis, 1 FAP = 1 DSC ; recadrer immédiatement"}]},
+  {k:"bdd", nom:"Indice global BDD", contact:"BDD — Isabelle Dusaulcy 95 15", actions:[
+    {a:"Fixer les objectifs, vérifier que chaque collaborateur connaît les règles, faire un bilan hebdomadaire communiqué en brief et recadrer si besoin"},
+    {a:"NPAI : requalifier la fiche quand le client est en magasin, et traiter le fichier NPAI par téléphone", o:"Fichier de requalification BDD"},
+    {a:"Email : systématiser la demande d'adresse en argumentant l'avantage client, et lancer une campagne d'appel de récupération"},
+    {a:"Champ X : qualifier à la création de la fiche et vérifier systématiquement qu'il est renseigné"},
+    {a:"Passager occasionnel : systématiser la création de la fiche sous X3, ou faire remplir un DPA en cas de file d'attente", o:"DPA"}]},
+  {k:"crm", nom:"Questionnaire CRM", contact:"BO DVA — Charlotte Annet 95 36", actions:[
+    {a:"Faire connaître et appliquer les engagements NA, les afficher et les mettre au brief 1 fois par semaine", o:"Affiche A3 engagements NA, charte d'accueil"},
+    {a:"Briefer et débriefer l'équipe sur les notes et verbatims du questionnaire en réunion mensuelle", o:"Reporting qualité de service"},
+    {a:"Systématiser la proposition de carte de fidélité aux nouveaux clients et identifier les collaborateurs en retard", o:"Requête X3 CFID"}]}
+];
+/* quel indice du COC répond à quel point de contrôle du CRV */
+const COC_POINTS = {
+  "quali|CFID": ["cfid"],
+  "quali|DSC": ["dsc"],
+  "quali|BDD": ["bdd"],
+  "quali|Quali service": ["crm"],
+  "quali|SQC": ["sqcOuverts","sqcNonClotures","rappelSqc"],
+  "presta|Feuilles de liaison": ["dsc"]
+};
+
+const INTERLOCUTEURS = ["Constat visite","Responsable de magasin","Vendeur","Directeur de concession"];
+const RESPONSABLES = ["DM","Chef d'atelier","Vendeur","Magasinier","RH","Assistante","Tribu Manager"];
+
+/* ===== import de fichiers ===== */
+const AIDES = {
+  gmdr:"PDF classement Podium par famille GMDR.",
+  mois:"PDF Podium TAC, ou export Excel Perfs mois.",
+  saison:"Alimentée par le tableau « Exercice » du TAC, ou par l'export Excel Perfs saison.",
+  prestaMois:"Alimentée par le TAC, ou par l'export Excel Presta mois.",
+  prestaSaison:"Alimentée par le tableau « Exercice » du TAC, ou par l'export Excel Presta saison.",
+  oss:"Export Excel OSS."
+};
+const XLSX_URL = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+
+function chargerXlsx(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((ok, ko) => {
+    const s = document.createElement("script");
+    s.src = XLSX_URL;
+    s.onload = () => ok(window.XLSX);
+    s.onerror = () => ko(new Error("bibliothèque Excel inaccessible, vérifiez la connexion"));
+    document.head.appendChild(s);
+  });
+}
+
+/* un classeur devient le même tableau de chaînes qu'un collage */
+async function tableDepuisClasseur(fichier){
+  const XL = await chargerXlsx();
+  const wb = XL.read(await fichier.arrayBuffer(), {type:"array", cellDates:false});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  if(!ws) throw new Error("classeur vide");
+  // valeurs brutes : SheetJS formaterait « 562 953 » en « 562,953 », lu comme un décimal
+  return XL.utils.sheet_to_json(ws, {header:1, raw:true, defval:""})
+    .map(r => r.map(c => String(c === null || c === undefined ? "" : c).trim()));
+}
+
+async function importerFichier(input, z){
+  const f = input.files && input.files[0];
+  if(!f) return;
+  const et = document.getElementById("etat_" + z);
+  const nom = f.name.toLowerCase();
+  et.className = "etat"; et.textContent = "Lecture de " + f.name + "…";
+  try{
+    if(nom.endsWith(".pdf")){
+      await lireFichierPdf(f, et, z);
+    } else if(/\.(xlsx|xlsm|xls|csv)$/.test(nom)){
+      const table = nom.endsWith(".csv")
+        ? enTableau(await f.text())
+        : await tableDepuisClasseur(f);
+      integrerTable(table, z, et);
+    } else {
+      et.className = "etat ko";
+      et.textContent = "Format non pris en charge. Attendu : PDF, XLSX, XLS ou CSV.";
+    }
+  }catch(err){
+    et.className = "etat ko";
+    et.textContent = "Fichier non lu : " + err.message;
+  }
+  input.value = "";
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAnalyse(); sauver();
+}
+
+/* ===== classement Podium par famille GMDR ===== */
+const GMDR_FAMILLES = ["Énergie","Stabilisation","Thermique","High-Tech","Mobilité",
+                       "Int/Out hors tente de toit","Tente de toit","Aménagement","Réf. T"];
+const GMDR_COLS = 24;   // nom, site, 9 couples rang/valeur, rang total, total, prév, N-1
+
+/* familles écartées de l'analyse, et familles à traiter en priorité */
+const GMDR_EXCLUES      = ["Tente de toit","Aménagement","Réf. T"];
+const GMDR_PRIORITAIRES = ["Énergie","Stabilisation","Thermique","High-Tech","Mobilité"];
+const ENJEU_MINI = 2;        // en k€ : en dessous, l'écart n'est pas un sujet de visite
+const ECART_RANG_MINI = 15;  // places d'écart au rang global à partir desquelles la famille décroche
+
+function codeVendeur(nom){
+  const s = String(nom || "").trim();
+  const i = s.indexOf("-");
+  return (i > 0 ? s.slice(0,i) : s).toUpperCase();
+}
+
+function lireGmdr(lignes){
+  const res = {acc:[], presta:[], titre:""};
+  let courante = null;
+  lignes.forEach(cells => {
+    if(cells.length === 1){
+      const t = cells[0];
+      if(/podium/i.test(t) && /presta/i.test(t)){ courante = "presta"; res.titre = res.titre || t; return; }
+      if(/podium/i.test(t) && /\bacc\b/i.test(t)){ courante = "acc"; res.titre = res.titre || t; return; }
+      return;
+    }
+    if(!courante || cells.length !== GMDR_COLS) return;
+    if(!cells.slice(2).every(estValeur)) return;          // écarte les lignes d'entête
+    const rec = {nom: cells[0], code: codeVendeur(cells[0]), site: cells[1], familles: []};
+    GMDR_FAMILLES.forEach((f,i) => rec.familles.push({
+      nom: f, rang: nombre(cells[2 + i*2]), valeur: nombre(cells[3 + i*2])
+    }));
+    rec.rangTot  = nombre(cells[20]);
+    rec.total    = nombre(cells[21]);
+    rec.prevTot  = nombre(cells[22]);
+    rec.totalN1  = nombre(cells[23]);
+    res[courante].push(rec);
+  });
+  return res;
+}
+
+/* ne garde que les collaborateurs du magasin : le classement est national,
+   on ne veut jamais y basculer par défaut */
+function gmdrDuMagasin(famille){
+  const liste = (E.gmdr && E.gmdr[famille]) || [];
+  if(!liste.length) return [];
+
+  const code = (E.magasin || "").split("-")[0].trim().toUpperCase();
+  if(code){
+    const parSite = liste.filter(r => String(r.site).trim().toUpperCase() === code);
+    if(parSite.length) return parSite;
+  }
+  // à défaut, on retient les collaborateurs présents dans les perfs importées
+  const miens = new Set([].concat(E.vendeurs.mois || [], E.vendeurs.saison || [])
+    .filter(v => v.ca && v.ca.real > 0).map(v => codeVendeur(v.nom)));
+  return miens.size ? liste.filter(r => miens.has(r.code)) : [];
+}
+
+/* ===== croisement perfs individuelles / OSS / classement national ===== */
+
+/* Pour chaque famille, la distribution nationale triée du plus fort au plus faible.
+   L'indice du tableau correspond au rang, ce qui permet de savoir ce que vend
+   le collaborateur classé à une position donnée. */
+function referencesFamilles(){
+  const reseau = (E.gmdr && E.gmdr.acc) || [];
+  const ref = {};
+  GMDR_FAMILLES.forEach((f,i) => {
+    const vals = reseau.map(r => (r.familles[i] && r.familles[i].valeur) || 0).sort((a,b) => b - a);
+    if(!vals.length) return;
+    const tranche = Math.max(1, Math.round(vals.length * 0.1));
+    ref[f] = {
+      tries: vals,
+      top10: vals.slice(0, tranche).reduce((a,b) => a + b, 0) / tranche,
+      meilleur: vals[0]
+    };
+  });
+  return ref;
+}
+function valeurAuRang(tries, rang){
+  if(!tries || !tries.length || !rang) return null;
+  return tries[Math.min(Math.max(1, rang), tries.length) - 1];
+}
+
+function croiserCollab(){
+  const gm = gmdrDuMagasin("acc");
+  if(!gm.length) return [];
+  const ref = referencesFamilles();
+
+  const perfsMois   = E.vendeurs.mois || [];
+  const perfsSaison = E.vendeurs.saison || [];
+  const indexer = liste => {
+    const o = {};
+    liste.forEach(v => { o[codeVendeur(v.nom)] = v; });
+    return o;
+  };
+  const parMois = indexer(perfsMois), parSaison = indexer(perfsSaison);
+  const pmfRef = (E.mois.pmf && E.mois.pmf.real) || (E.saison.pmf && E.saison.pmf.real) || null;
+
+  return gm.map(r => {
+    const mois   = parMois[r.code]   || null;
+    const saison = parSaison[r.code] || null;
+    const perf   = mois || saison;
+
+    // enjeu par famille : ce qu'il vendrait s'il était, sur cette famille,
+    // au même rang national que son rang global
+    const familles = [];
+    r.familles.forEach((f,i) => {
+      if(GMDR_EXCLUES.includes(f.nom)) return;
+      const d = ref[f.nom];
+      const val = f.valeur || 0;
+      // l'enjeu se mesure contre les meilleurs du réseau
+      const top10 = d ? d.top10 : null;
+      const enjeu = (top10 !== null && top10 > val) ? top10 - val : 0;
+      // palier intermédiaire : ce qu'il vendrait à son propre rang global
+      const cible = d ? valeurAuRang(d.tries, r.rangTot) : null;
+      const palier = (cible !== null && cible > val) ? cible - val : 0;
+      // la famille décroche quand il y est moins bien classé que son niveau global
+      const enRetrait = (r.rangTot !== null && f.rang !== null && f.rang - r.rangTot >= ECART_RANG_MINI) || val === 0;
+      familles.push({
+        nom: f.nom, rang: f.rang, valeur: val,
+        prioritaire: GMDR_PRIORITAIRES.includes(f.nom),
+        top10: top10, enjeu: enjeu, cible: cible, palier: palier,
+        meilleur: d ? d.meilleur : null,
+        decalage: enRetrait && enjeu >= ENJEU_MINI
+      });
+    });
+    familles.sort((a,b) => (b.prioritaire - a.prioritaire) || (b.decalage - a.decalage) || (b.enjeu - a.enjeu));
+
+    const enjeuPrio = familles.filter(f => f.prioritaire && f.decalage)
+                              .reduce((n,f) => n + f.enjeu, 0);
+    const enjeuTotal = familles.filter(f => f.decalage).reduce((n,f) => n + f.enjeu, 0);
+
+    const ca      = perf && perf.ca ? perf.ca.real : null;
+    const factures = perf && perf.fact ? perf.fact.real : null;
+    const pmf     = perf && perf.pmf ? perf.pmf.real : null;
+    const marginal = (factures !== null && factures < 10);
+
+    return {
+      nom: nomCourt(r.nom), code: r.code, rangTot: r.rangTot,
+      total: r.total, prevTot: r.prevTot, totalN1: r.totalN1,
+      ecartObj: ecart(r.total, r.prevTot),
+      ecartOssN1: ecart(r.total, r.totalN1),
+      caMois: mois && mois.ca ? mois.ca.real : null,
+      ecartCaPrev: mois && mois.ca ? ecart(mois.ca.real, mois.ca.prev) : null,
+      ecartCaN1:   mois && mois.ca ? ecart(mois.ca.real, mois.ca.n1) : null,
+      caSaison: saison && saison.ca ? saison.ca.real : null,
+      ecartCaSaisonN1: saison && saison.ca ? ecart(saison.ca.real, saison.ca.n1) : null,
+      tx: perf && perf.tx ? perf.tx.real : null,
+      factures: factures, pmf: pmf, pmfRef: pmfRef,
+      panierBas: !marginal && pmf !== null && pmfRef && pmf < pmfRef * 0.7,
+      ossAcc: perf ? perf.ossAcc : null,
+      ecartOssAccN1: perf ? ecart(perf.ossAcc, perf.ossAccN1) : null,
+      caPresta: perf ? perf.caPresta : null,
+      synergie: perf ? perf.synergie : null,
+      marginal: marginal, sansPerf: !perf,
+      familles: familles, enjeuPrio: enjeuPrio, enjeuTotal: enjeuTotal
+    };
+  }).sort((a,b) => b.enjeuPrio - a.enjeuPrio);
+}
+
+/* ===== stockage (window.storage en aperçu, localStorage en ligne) ===== */
+const memo = {
+  async lire(k){
+    try{
+      if(window.storage){ const r = await window.storage.get(k); return r ? r.value : null; }
+      return localStorage.getItem(k);
+    }catch(e){ return null; }
+  },
+  async ecrire(k,v){
+    try{
+      if(window.storage){ await window.storage.set(k,v); return; }
+      localStorage.setItem(k,v);
+    }catch(e){}
+  }
+};
+
+/* ===== référentiel ===== */
+const MAGASINS = ["104-RONCQ ACCESSOIRES","105-ARPAJON ACCESSOIRES","109-TOULON ACCESSOIRES",
+"110-PENNES MIRABEAU ACCESSOIRES","10B-NARBONNE ACCESSOIRES ANGOULEME","10G-NARBONNE ACCESSOIRES MACON",
+"111-MERIGNAC ACCESSOIRES","113-BORDEAUX NORD ACCESSOIRES","116-CAEN ACCESSOIRES","118-AUBAGNE ACCESSOIRES",
+"11A-NARBONNE ACCESSOIRES 34 - BEZIERS","11B-RENNES ACCESSOIRES","121-DAX ACCESSOIRES","125-MANDELIEU ACCESSOIRES",
+"126-GRENOBLE ACCESSOIRES","127-SORGUES ACCESSOIRES","128-LE PEYROU ACCESSOIRES","129-PERPIGNAN ACCESSOIRES",
+"130-ST ETIENNE ACCESSOIRES","131-COIGNIERES ACCESSOIRES","132-MONTPELLIER ACCESSOIRES","136-LYON ACCESSOIRES",
+"138-ST ALBAN ACCESSOIRES","143-VALENCE ACCESSOIRES","146-LA ROCHELLE ACCESSOIRES","147-SECLIN ACCESSOIRES",
+"148-LONS ACCESSOIRES","14A-AUCH ACCESSOIRES","14B-VALENCIENNES ACCESSOIRES","E02-SENS ACCESSOIRES",
+"E04-NANTES ACCESSOIRES","E51-ANNECY ACCESSOIRES","E56-PERIGUEUX ACCESSOIRES","10H-LYON ACCESSOIRES OUTDOOR"];
+
+/* indicateurs des exports Perfs (mois et saison), repérés par nom de colonne */
+const IND_PERF = [
+  {k:"ca",    nom:"CA",           fmt:"eur", h:{n1:"CA N-1",       prev:"CA Prev",  real:"CA Rea"}},
+  {k:"marge", nom:"Marge PR",     fmt:"eur", h:{n1:"Mg PR N-1",    prev:"Mg Prev",  real:"Mg PR Rea"}},
+  {k:"tx",    nom:"Tx marge PR",  fmt:"pct", h:{n1:"Tx Mg PR N-1",                  real:"Tx Mg PR"}},
+  {k:"fact",  nom:"Nb factures",  fmt:"ent", h:{n1:"Nb Fac N-1",   prev:"Nb Fac Prev", real:"Nb Fac Rea"}},
+  {k:"pmf",   nom:"PMF",          fmt:"eur", h:{n1:"PMF N-1",      prev:"PMF Prev", real:"PMF Rea"}}
+];
+/* colonnes présentes uniquement dans l'export saison */
+const IND_SAISON = IND_PERF.concat([
+  {k:"txT", nom:"Tx marge totale", fmt:"pct", h:{n1:"Tx Mg T N-1", real:"Tx Mg T Rea"}},
+  {k:"txR", nom:"Tx remise",       fmt:"pct", h:{n1:"Tx R N-1",    real:"Tx R Rea"}}
+]);
+
+/* indicateurs OSS : une seule colonne par année, N-1 et N repérés par l'année de l'entête */
+const IND_OSS = [
+  {k:"os",       nom:"One-Shot",              fmt:"eur", h:"One-Shot (sur la période)"},
+  {k:"facture",  nom:"Facturé",               fmt:"eur", h:"Facturé (sur la période)"},
+  {k:"prevCA",   nom:"Prév CA",               fmt:"eur", h:"Prév CA"},
+  {k:"nbOs",     nom:"Nb factures One-Shot",  fmt:"ent", h:"Nbre Fac. One-Shot (dont livraison drop shipment)"},
+  {k:"pmOs",     nom:"PM One-Shot",           fmt:"eur", h:"PM OS"},
+  {k:"nbSigne",  nom:"Nb CDC signés",         fmt:"ent", h:"Nbre CDC Signé"},
+  {k:"pmSigne",  nom:"PM signé",              fmt:"eur", h:"PM Signé"},
+  {k:"signe",    nom:"Signé",                 fmt:"eur", h:"Signé (Ensemble des commandes réalisés sur la période)"},
+  {k:"poidsCli", nom:"Poids clients signés",  fmt:"pct", h:"Poids du Nbre de Client signé sur Nbre de Client One Shot"},
+  {k:"signeOss", nom:"Signé / OSS",           fmt:"pct", h:"Signé / OSS"},
+  {k:"oss",      nom:"OSS création de valeur",fmt:"eur", h:"OSS\nCréation de Valeur (sur la période)"},
+  {k:"ossHS",    nom:"OSS hors salons",       fmt:"eur", h:"OSS hors Salons"},
+  {k:"ossPrev",  nom:"OSS / Prév CA",         fmt:"pct", h:"OSS / Prév CA"}
+];
+
+/* la prestation mélange les nomenclatures selon l'export : plusieurs entêtes possibles par valeur */
+const IND_PRESTA = [
+  {k:"ca",    nom:"CA prestation", fmt:"eur", h:{n1:"CA N-1",     prev:"CA Prev",     real:"CA Rea"}},
+  {k:"marge", nom:"Marge",         fmt:"eur", h:{n1:"Mg N-1",     prev:"Mg Prev",     real:["Mg Rea","Mg PR Rea"]}},
+  {k:"tx",    nom:"Tx marge",      fmt:"pct", h:{n1:["Tx Mg N-1","Tx Mg PR N-1"],     real:["Tx Mg","Tx Mg PR"]}},
+  {k:"fact",  nom:"Nb factures",   fmt:"ent", h:{n1:"Nb Fac N-1", prev:"Nb Fac Prev", real:"Nb Fac Rea"}},
+  {k:"pmf",   nom:"PMF",           fmt:"eur", h:{n1:"PMF N-1",    prev:"PMF Prev",    real:"PMF Rea"}}
+];
+
+const BLOCS = [
+  {k:"presta", titre:"Presta atelier", points:["Feuilles de liaison","Bons de travaux","Devis signés","Planning atelier"], zone:"Plan d'action Presta / OSS"},
+  {k:"stock",  titre:"Stock", points:["SORTATT","Inventaire tournant","DRG","Réceptions"], zone:"Constat / PA stock", solde:true},
+  {k:"rh",     titre:"RH", points:["KELIO","Planning","Planning CP","Affichage planning"], zone:"Commentaire RH"},
+  {k:"quali",  titre:"Quali service", points:["Wallet","CFID","Quali service","BDD","DSC","SQC"], zone:"Commentaire / PA"},
+  {k:"secu",   titre:"Sécurisation", points:["Encours clients","Remise en banque","Caisse-coffre","Navette","Immobilier","Sécurité"], zone:"Constat / PA", encours:true}
+];
+
+/* ===== état ===== */
+/* colonnes du PDF Podium, dans l'ordre où elles apparaissent dans le tableau */
+const PDF_COLS = {
+  acc: ["caN1","caPrev","caRea","ossAcc","ossAccN1","mgN1","txMgN1","mgRea","txMg","txDt",
+        "caPrestaN1","caPrestaPrev","caPrestaRea","synergie","dontST","ossPresta","ossPrestaN1","txDtPresta"],
+  atelier: ["moisN1","moisPrev","moisRea","moisST","moisTxDt",
+            "trimN1","trimPrev","trimRea","trimST","trimTxDt",
+            "exoN1","exoPrev","exoRea","exoST","exoTxDt"]
+};
+const PDF_PERIODES = [["mois","Mois"],["trimestre","Trimestre"],["exercice","Exercice"],["atelier","Atelier"]];
+/* lignes qui ne sont pas des personnes et ne doivent pas entrer dans les classements */
+const PAS_UNE_PERSONNE = /^(inactif|sstacc|st\d|st1|total)/i;
+
+const E = {
+  magasin:"", date:"", impressionSV:"", txtSV:"",
+  mois:{}, saison:{}, oss:{}, prestaMois:{}, prestaSaison:{},
+  vendeurs:{mois:[], saison:[], prestaMois:[], prestaSaison:[]},
+  podium:{magasin:"", arrete:"", sections:{}},
+  gmdr:{acc:[], presta:[], titre:""},
+  sources:{},
+  controles:{}, zones:{},
+  stock:{entree:null, sortie:null},
+  encours:{nbre:null, valeur:null},
+  pa:[], synthese:"", dictee:"", relais:"", interlocuteur:"Constat visite", restitution:"", echanges:[]
+};
+function videBloc(indicateurs){
+  const o = {};
+  indicateurs.forEach(i => o[i.k] = {n1:null, prev:null, real:null});
+  return o;
+}
+E.mois = videBloc(IND_SAISON); E.saison = videBloc(IND_SAISON);
+E.prestaMois = videBloc(IND_PRESTA); E.prestaSaison = videBloc(IND_PRESTA);
+IND_OSS.forEach(i => E.oss[i.k] = {n1:null, n:null});
+
+/* ===== utilitaires de nombre ===== */
+function nombre(txt){
+  if(txt === null || txt === undefined) return null;
+  let s = String(txt).trim();
+  if(!s) return null;
+  const pct = /%/.test(s);
+  const neg = /^\(.*\)$/.test(s);
+  s = s.replace(/[()€\s\u00A0\u202F%]/g,"").replace(/\u2212/g,"-");
+  const iv = s.lastIndexOf(","), ip = s.lastIndexOf(".");
+  if(iv > -1 && ip > -1){
+    // le dernier séparateur rencontré est le séparateur décimal
+    if(iv > ip) s = s.replace(/\./g,"").replace(",",".");
+    else s = s.replace(/,/g,"");
+  } else if(iv > -1){
+    s = s.replace(",",".");
+  } else if((s.match(/\./g)||[]).length > 1){
+    s = s.replace(/\./g,"");
+  }
+  const v = parseFloat(s);
+  if(!isFinite(v)) return null;
+  let r = neg ? -Math.abs(v) : v;
+  if(pct) r = r/100;
+  return r;
+}
+function fmt(v, type){
+  if(v === null || v === undefined || !isFinite(v)) return "—";
+  if(type === "eur") return Math.round(v).toLocaleString("fr-FR") + " €";
+  if(type === "pct") return (v*100).toFixed(1).replace(".",",") + " %";
+  if(type === "ent") return Math.round(v).toLocaleString("fr-FR");
+  return String(v);
+}
+function ecart(a, b){                     // évolution relative de b vers a
+  if(a === null || b === null || !isFinite(a) || !isFinite(b) || b === 0) return null;
+  return a/b - 1;
+}
+function fmtEcart(e){
+  if(e === null) return "—";
+  const s = (e*100).toFixed(1).replace(".",",");
+  return (e > 0 ? "+" : "") + s + " %";
+}
+function fmtAbs(e){
+  if(e === null) return "—";
+  return (Math.abs(e)*100).toFixed(1).replace(".",",") + " %";
+}
+function classeEcart(e, seuil){
+  if(e === null) return "neu";
+  const s = seuil === undefined ? 0.03 : seuil;
+  if(e >= s) return "pos";
+  if(e <= -s) return "neg";
+  return "neu";
+}
+
+/* ===== lecture des exports collés ===== */
+function normH(s){
+  return String(s == null ? "" : s)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase().replace(/\s+/g," ").trim();
+}
+function enTableau(txt){
+  const s = String(txt).replace(/\r\n?/g, "\n");
+  const sep = s.includes("\t") ? "\t" : (s.includes(";") ? ";" : "\t");
+  const table = [];
+  let ligne = [], champ = "", guillemets = false;
+  for(let i = 0; i < s.length; i++){
+    const ch = s[i];
+    if(guillemets){
+      if(ch === '"'){
+        if(s[i+1] === '"'){ champ += '"'; i++; }
+        else guillemets = false;
+      } else champ += ch;
+    } else if(ch === '"' && champ === ""){
+      guillemets = true;                       // Excel entoure de guillemets toute cellule
+    } else if(ch === sep){                     // contenant un retour à la ligne ou un séparateur
+      ligne.push(champ.trim()); champ = "";
+    } else if(ch === "\n"){
+      ligne.push(champ.trim()); table.push(ligne); ligne = []; champ = "";
+    } else champ += ch;
+  }
+  if(champ !== "" || ligne.length){ ligne.push(champ.trim()); table.push(ligne); }
+  return table;
+}
+function estTotal(c){ return /^total/i.test(String(c || "").trim()); }
+
+/* devine de quel export il s'agit d'après ses entêtes.
+   Seul l'entête de marge N-1 sépare vraiment accessoires et prestation :
+   les accessoires écrivent « Mg PR N-1 », la prestation « Mg N-1 ». */
+function identifier(table){
+  const debut = table.slice(0, 12).flat().map(normH);
+  const a = m => debut.some(c => c === m);
+  const contient = m => debut.some(c => c.includes(m));
+  if(contient("signe / oss") || contient("oss hors salons")) return "oss";
+  if(!a("ca rea")) return null;
+
+  const accessoires = a("mg pr n-1") || a("ca raf") || a("tx mg t n-1");
+  const presta = !accessoires && (a("mg n-1") || a("mg rea"));
+  const saison = a("tribu") || a("tx mg t n-1");
+  if(presta) return saison ? "prestaSaison" : "prestaMois";
+  return saison ? "saison" : "mois";
+}
+
+/* index des entêtes d'un export Perfs : nom normalisé -> n° de colonne */
+function indexEntetes(table){
+  for(let i = 0; i < Math.min(table.length, 12); i++){
+    const ligne = table[i].map(normH);
+    if(ligne.includes("ca rea")){
+      const idx = {};
+      ligne.forEach((h,c) => { if(h && !(h in idx)) idx[h] = c; });
+      return {idx: idx, ligne: i};
+    }
+  }
+  return null;
+}
+function valeur(rang, idx, noms){
+  const liste = Array.isArray(noms) ? noms : [noms];
+  for(const n of liste){
+    const c = idx[normH(n)];
+    if(c !== undefined){
+      const v = nombre(rang[c]);
+      if(v !== null) return v;
+    }
+  }
+  return null;
+}
+
+function lireperfs(table, indicateurs){
+  const e = indexEntetes(table);
+  if(!e) return null;
+  const corps = table.slice(e.ligne + 1).filter(r => r.some(c => c !== ""));
+
+  // colonne du nom de vendeur, et colonnes de regroupement à ignorer
+  const colVendeur = e.idx["code-nom prenom vendeur"];
+  const totaux = {}, vendeurs = [];
+
+  corps.forEach(r => {
+    const nom = colVendeur === undefined ? "" : (r[colVendeur] || "").trim();
+    const ligneTotal = r.slice(0, 6).some(estTotal) || estTotal(nom);
+    const cible = {};
+    let rempli = 0;
+    indicateurs.forEach(ind => {
+      cible[ind.k] = {n1:null, prev:null, real:null};
+      ["n1","prev","real"].forEach(col => {
+        if(!ind.h[col]) return;
+        const v = valeur(r, e.idx, ind.h[col]);
+        if(v !== null){ cible[ind.k][col] = v; rempli++; }
+      });
+    });
+    if(!rempli) return;
+    if(ligneTotal){ Object.assign(totaux, cible); }
+    else if(nom) vendeurs.push(Object.assign({nom: nom}, cible));
+  });
+
+  if(!Object.keys(totaux).length) return null;
+  return {totaux: totaux, vendeurs: vendeurs};
+}
+
+/* OSS : deux blocs d'années côte à côte, la plus ancienne est N-1 */
+function lireOss(table){
+  let ligneLib = -1;
+  for(let i = 0; i < Math.min(table.length, 12); i++)
+    if(table[i].map(normH).some(c => c === "signe / oss")){ ligneLib = i; break; }
+  if(ligneLib < 1) return null;
+
+  // la ligne des années est celle, au-dessus, qui porte des millésimes
+  let ligneAn = -1;
+  for(let i = ligneLib - 1; i >= 0; i--)
+    if(table[i].filter(c => /^(19|20)\d{2}$/.test(c)).length >= 4){ ligneAn = i; break; }
+  if(ligneAn === -1) return null;
+
+  // les millésimes sont fusionnés dans Excel : on propage vers la droite
+  const annees = [];
+  let courante = "";
+  table[ligneAn].forEach((c,i) => {
+    if(/^(19|20)\d{2}$/.test(c)) courante = c;
+    else if(c && !/^n vs n-1$/i.test(normH(c))) courante = "";
+    annees[i] = courante;
+  });
+  const distinctes = [...new Set(annees.filter(Boolean))].map(Number).sort((a,b) => a-b);
+  if(distinctes.length < 2) return null;
+  const anN1 = String(distinctes[0]), anN = String(distinctes[distinctes.length-1]);
+
+  const colonne = {};
+  table[ligneLib].forEach((lib,i) => {
+    const cle = annees[i] + "|" + normH(lib);
+    if(normH(lib) && !(cle in colonne)) colonne[cle] = i;
+  });
+
+  // ligne du magasin, sinon le total général
+  const corps = table.slice(ligneLib + 1).filter(r => r.some(c => c !== ""));
+  const code = (E.magasin || "").split("-")[0];
+  let rang = code ? corps.find(r => r.some(c => c.startsWith(code + "-"))) : null;
+  if(!rang) rang = corps.find(r => r.some(c => /^total g[eé]n[eé]ral/i.test(c)));
+  if(!rang) rang = corps.find(r => r.filter(c => nombre(c) !== null).length > 8);
+  if(!rang) return null;
+
+  const sortie = {};
+  let rempli = 0;
+  IND_OSS.forEach(ind => {
+    sortie[ind.k] = {n1:null, n:null};
+    [["n1",anN1],["n",anN]].forEach(([role,an]) => {
+      const c = colonne[an + "|" + normH(ind.h)];
+      if(c === undefined) return;
+      const v = nombre(rang[c]);
+      if(v !== null){ sortie[ind.k][role] = v; rempli++; }
+    });
+  });
+  return rempli ? {oss: sortie, annees:[anN1, anN]} : null;
+}
+
+/* un export partiel enrichit ce qui est déjà là au lieu de l'effacer */
+function fusionner(cible, source){
+  Object.keys(source).forEach(k => {
+    if(!cible[k]) cible[k] = {n1:null, prev:null, real:null};
+    ["n1","prev","real"].forEach(c => {
+      const v = source[k][c];
+      if(v !== null && v !== undefined) cible[k][c] = v;
+    });
+  });
+}
+
+/* même logique pour les vendeurs : on complète ligne à ligne, par nom */
+function fusionnerVendeurs(liste, nouveaux){
+  nouveaux.forEach(nv => {
+    const ex = liste.find(v => v.nom === nv.nom);
+    if(!ex){ liste.push(nv); return; }
+    Object.keys(nv).forEach(k => {
+      if(k === "nom") return;
+      if(!ex[k]){ ex[k] = nv[k]; return; }
+      ["n1","prev","real"].forEach(col => {
+        const v = nv[k][col];
+        if(v !== null && v !== undefined) ex[k][col] = v;
+      });
+    });
+  });
+  return liste;
+}
+
+const EXPORTS = {
+  mois:         {nom:"Perfs mois",        bloc:"mois",         ind:() => IND_PERF},
+  saison:       {nom:"Perfs saison",      bloc:"saison",       ind:() => IND_SAISON},
+  prestaMois:   {nom:"Presta mois",       bloc:"prestaMois",   ind:() => IND_PRESTA},
+  prestaSaison: {nom:"Presta saison",     bloc:"prestaSaison", ind:() => IND_PRESTA}
+};
+
+function integrerTable(table, z, et){
+  let type = identifier(table);
+  if(!type){
+    et.className = "etat ko";
+    et.textContent = "Fichier non reconnu. Vérifiez qu'il s'agit bien d'un export Perfs, Presta ou OSS.";
+    return;
+  }
+
+  // le bouton d'où vient le fichier décide de la période ; son contenu décide
+  // seulement s'il s'agit d'accessoires ou de prestation
+  const PERIODE_ZONE = {mois:"mois", saison:"saison", prestaMois:"mois", prestaSaison:"saison"};
+  if(type !== "oss"){
+    const presta = /^presta/.test(type);
+    const per = PERIODE_ZONE[z] || (type === "saison" || type === "prestaSaison" ? "saison" : "mois");
+    type = presta ? (per === "saison" ? "prestaSaison" : "prestaMois") : per;
+  }
+
+  let ok = false, detail = "";
+  if(type === "oss"){
+    const r = lireOss(table);
+    if(r){ E.oss = r.oss; E.sources.oss = true; ok = true;
+           detail = "OSS intégré (" + r.annees[0] + " contre " + r.annees[1] + ")."; }
+  } else {
+    const cfg = EXPORTS[type];
+    const r = lireperfs(table, cfg.ind());
+    if(r){
+      fusionner(E[cfg.bloc], r.totaux);
+      if(r.vendeurs.length){
+        if(!E.vendeurs[cfg.bloc]) E.vendeurs[cfg.bloc] = [];
+        fusionnerVendeurs(E.vendeurs[cfg.bloc], r.vendeurs);
+      }
+      E.sources[cfg.bloc] = true;
+      ok = true;
+      detail = cfg.nom + " intégré" + (r.vendeurs.length ? " avec " + r.vendeurs.length + " vendeurs." : ".");
+      if(!r.totaux.ca || r.totaux.ca.n1 === null) detail += " Pas de N-1 dans ce fichier, les comparaisons N-1 restent celles déjà en place.";
+    }
+  }
+
+  if(!ok){
+    et.className = "etat ko";
+    et.textContent = "Export reconnu comme « " + (EXPORTS[type] ? EXPORTS[type].nom : type) + " » mais aucune ligne de total exploitable.";
+    return;
+  }
+  et.className = "etat ok";
+  et.textContent = detail;
+  completerCalculs();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAnalyse(); sauver();
+}
+
+/* ===== remise à zéro pour un nouveau compte rendu ===== */
+function remiseAZero(){
+  const ok = confirm("Repartir sur un compte rendu vierge ?\n\n" +
+    "Chiffres, points de contrôle, commentaires, plan d'action et restitution seront effacés. " +
+    "L'URL du relais est conservée.");
+  if(!ok) return;
+
+  const relais = E.relais;                       // seul réglage conservé
+  viderChiffres();
+
+  E.magasin = ""; E.impressionSV = ""; E.txtSV = "";
+  E.controles = {}; E.zones = {};
+  E.stock = {entree:null, sortie:null};
+  E.encours = {nbre:null, valeur:null};
+  E.pa = []; E.synthese = ""; E.dictee = ""; E.restitution = ""; E.echanges = [];
+  E.interlocuteur = INTERLOCUTEURS[0];
+  E.podium = {magasin:"", arrete:"", sections:{}};
+  E.gmdr = {acc:[], presta:[], titre:""};
+  E._constats = []; E._croise = [];
+  E.relais = relais;
+  E.date = new Date().toISOString().slice(0,10);
+
+  // remise à blanc de l'interface
+  const v = (id, val) => { const e = document.getElementById(id); if(e) e.value = val; };
+  v("magasin",""); v("dateVisite", E.date); v("impressionSV",""); v("txtSV","");
+  v("synthese",""); v("dictee",""); v("restitution","");
+  v("interlocuteur", E.interlocuteur);
+  v("stEntree",""); v("stSortie",""); v("encNbre",""); v("encValeur","");
+  const s = document.getElementById("stSolde"); if(s) s.textContent = "—";
+  BLOCS.forEach(b => v("z_" + b.k, ""));
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed","false"));
+
+  majJauge(); majMots(); majMotsSynthese(); rendreDictees();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendrePA(); rendreAnalyse();
+  sauver();
+  etatMicro("Compte rendu vierge. Commencez par choisir le magasin et importer les fichiers.", "ok");
+  if(window.scrollTo) window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function viderChiffres(){
+  ["mois","saison","prestaMois","prestaSaison","oss","gmdr"].forEach(z => {
+    const e = document.getElementById("etat_" + z);
+    if(e){ e.className = "etat sousimp"; e.textContent = AIDES[z] || ""; }
+  });
+  E.mois = videBloc(IND_SAISON); E.saison = videBloc(IND_SAISON);
+  E.prestaMois = videBloc(IND_PRESTA); E.prestaSaison = videBloc(IND_PRESTA);
+  E.oss = {}; IND_OSS.forEach(i => E.oss[i.k] = {n1:null, n:null});
+  E.vendeurs = {mois:[], saison:[], prestaMois:[], prestaSaison:[]};
+  E.podium = {magasin:"", arrete:"", sections:{}};
+  E.gmdr = {acc:[], presta:[], titre:""};
+  E.sources = {};
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAnalyse(); sauver();
+}
+function rendreSources(){
+  const z = document.getElementById("sources");
+  if(!z) return;
+  const liste = [["mois","Perfs mois"],["saison","Perfs saison"],["oss","OSS"],
+                 ["prestaMois","Presta mois"],["prestaSaison","Presta saison"],
+                 ["podium","TAC PDF"],["gmdr","Classement Podium"]];
+  z.innerHTML = liste.map(x =>
+    "<span class='puce " + (E.sources[x[0]] ? "ok" : "") + "'>" + x[1] + "</span>").join("");
+}
+
+/* déduit ce qui manque : taux de marge et panier moyen */
+function completerCalculs(){
+  [E.mois, E.saison, E.prestaMois, E.prestaSaison].forEach(bloc => {
+    if(!bloc || !bloc.ca) return;
+    ["n1","prev","real"].forEach(c => {
+      // une marge ou un nombre de factures à zéro en face d'un CA non nul
+      // n'est pas une vraie valeur : c'est une colonne que l'export ne remplit pas
+      if(bloc.ca[c]){
+        ["marge","fact","tx"].forEach(k => { if(bloc[k] && bloc[k][c] === 0) bloc[k][c] = null; });
+      }
+      const ca = bloc.ca[c], mg = bloc.marge ? bloc.marge[c] : null, nf = bloc.fact ? bloc.fact[c] : null;
+      if(bloc.tx && bloc.tx[c] === null && ca && mg) bloc.tx[c] = mg/ca;
+      if(bloc.pmf && bloc.pmf[c] === null && ca && nf) bloc.pmf[c] = ca/nf;
+    });
+  });
+}
+
+/* ===== PDF Podium ===== */
+const PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+
+function chargerPdfJs(){
+  if(window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  return new Promise((ok, ko) => {
+    const s = document.createElement("script");
+    s.src = PDFJS_URL + "pdf.min.js";
+    s.onload = () => {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_URL + "pdf.worker.min.js";
+      ok(window.pdfjsLib);
+    };
+    s.onerror = () => ko(new Error("bibliothèque PDF inaccessible, vérifiez la connexion"));
+    document.head.appendChild(s);
+  });
+}
+
+/* le rapport est imprimé en paysage : les lignes courent sur un axe, les colonnes sur l'autre */
+function lignesPdf(items, pivote){
+  const map = new Map();
+  items.forEach(it => {
+    const s = it.str.trim(); if(!s) return;
+    const t = it.transform;
+    const cle = Math.round((pivote ? t[4] : -t[5]) * 2) / 2;
+    const ordre = pivote ? t[5] : t[4];
+    if(!map.has(cle)) map.set(cle, []);
+    map.get(cle).push({ordre: ordre, s: s});
+  });
+  return [...map.entries()].sort((a,b) => a[0]-b[0])
+    .map(e => e[1].sort((a,b) => a.ordre-b.ordre).map(c => c.s));
+}
+const estValeur = s => s === "-" || /^#+$/.test(s) || nombre(s) !== null;
+
+function lirePodium(lignes){
+  const res = {magasin:"", arrete:"", sections:{}};
+  let courante = null;
+  lignes.forEach(cells => {
+    if(cells.length === 1){
+      const t = cells[0];
+      let m = t.match(/Collaborateurs\s*-\s*(.+)$/i);
+      if(m){ res.magasin = m[1].trim(); return; }
+      if(/^Mois\s+.+\s+au\s/i.test(t))            courante = "mois";
+      else if(/^Trimestre\s+\d+\s+au\s/i.test(t)) courante = "trimestre";
+      else if(/^Exercice\s+au\s/i.test(t))        courante = "exercice";
+      else if(/Technicien\s+Atelier/i.test(t))    courante = "atelier";
+      else return;
+      m = t.match(/au\s+(\d{2}\/\d{2}\/\d{4})/);
+      if(m) res.arrete = m[1];
+      if(!res.sections[courante]) res.sections[courante] = {collabs:[], total:null};
+      return;
+    }
+    if(!courante) return;
+    const cols = PDF_COLS[courante === "atelier" ? "atelier" : "acc"];
+    if(cells.length < cols.length) return;
+    const valeurs = cells.slice(cells.length - cols.length);
+    if(!valeurs.every(estValeur)) return;          // écarte les lignes d'entête
+    const nom = cells.length > cols.length ? cells.slice(0, cells.length - cols.length).join(" ") : "Total";
+    const rec = {nom: nom};
+    cols.forEach((k,i) => rec[k] = nombre(valeurs[i]));
+    if(/^total$/i.test(nom)) res.sections[courante].total = rec;
+    else res.sections[courante].collabs.push(rec);
+  });
+  return res;
+}
+
+async function lireFichierPdf(f, et, z){
+  {
+    const lib = await chargerPdfJs();
+    const buf = await f.arrayBuffer();
+    const doc = await lib.getDocument({data: new Uint8Array(buf)}).promise;
+    let lignes = [];
+    for(let p = 1; p <= doc.numPages; p++){
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      lignes = lignes.concat(lignesPdf(tc.items, (page.rotate % 180) !== 0));
+    }
+    // un PDF est soit le TAC du magasin, soit le classement national par famille
+    const g = lireGmdr(lignes);
+    if(g.acc.length || g.presta.length){
+      E.gmdr = g; E.sources.gmdr = true;
+      et.className = "etat ok";
+      et.textContent = "Classement Podium intégré : " + g.acc.length + " collaborateurs accessoires et " +
+                       g.presta.length + " en prestation, sur " + GMDR_FAMILLES.length + " familles.";
+      return;
+    }
+
+    const r = lirePodium(lignes);
+    const nb = Object.keys(r.sections).length;
+    if(!nb) throw new Error("aucun tableau reconnu dans ce PDF");
+
+    E.podium = r;
+    E.sources.podium = true;
+    if(!E.magasin && r.magasin){
+      const trouve = MAGASINS.find(m => m.split("-")[0] === r.magasin.split("-")[0]);
+      if(trouve){ E.magasin = trouve; document.getElementById("magasin").value = trouve; }
+    }
+    reprendrePodium();
+    et.className = "etat ok";
+    et.textContent = "Podium " + r.magasin + " intégré : " + nb + " tableaux, arrêté au " + (r.arrete || "date inconnue") +
+                     ". Perfs du mois, saison à date et collaborateurs alimentés.";
+  }
+  completerCalculs();
+}
+
+/* Le TAC alimente deux périodes : « Mois » va dans les perfs du mois,
+   « Exercice au… » va dans la saison à date, pour l'accessoire et la prestation. */
+function reprendrePodium(){
+  const S = E.podium.sections || {};
+  const verser = (t, blocAcc, blocPresta, cleAcc, clePresta) => {
+    if(!t) return;
+    fusionner(E[blocAcc], {
+      ca:    {n1: t.caN1,   prev: t.caPrev, real: t.caRea},
+      marge: {n1: t.mgN1,   prev: null,     real: t.mgRea},
+      tx:    {n1: t.txMgN1, prev: null,     real: t.txMg}
+    });
+    fusionner(E[blocPresta], {
+      ca: {n1: t.caPrestaN1, prev: t.caPrestaPrev, real: t.caPrestaRea}
+    });
+    E.sources[cleAcc] = true; E.sources[clePresta] = true;
+  };
+  verser(S.mois && S.mois.total, "mois", "prestaMois", "mois", "prestaMois");
+  verser(S.exercice && S.exercice.total, "saison", "prestaSaison", "saison", "prestaSaison");
+
+  // les collaborateurs du TAC rejoignent les mêmes listes que les exports Excel
+  const versVendeurs = (section, periode) => {
+    if(!section) return;
+    const liste = section.collabs.filter(r => !PAS_UNE_PERSONNE.test(r.nom) && r.caRea > 0).map(r => ({
+      nom: r.nom,
+      ca:    {n1: r.caN1, prev: r.caPrev, real: r.caRea},
+      marge: {n1: r.mgN1, prev: null,     real: r.mgRea},
+      tx:    {n1: r.txMgN1, prev: null,   real: r.txMg},
+      ossAcc: r.ossAcc, ossAccN1: r.ossAccN1,
+      caPresta: r.caPrestaRea, ossPresta: r.ossPresta, synergie: r.synergie, txDt: r.txDt
+    }));
+    if(!E.vendeurs[periode]) E.vendeurs[periode] = [];
+    fusionnerVendeurs(E.vendeurs[periode], liste);
+  };
+  versVendeurs(S.mois, "mois");
+  versVendeurs(S.exercice, "saison");
+}
+
+function rendreCollab(){
+  ["mois","saison"].forEach(periode => {
+    const sec = document.getElementById("blocCollab" + (periode === "mois" ? "Mois" : "Saison"));
+    if(!sec) return;
+    const liste = (E.vendeurs[periode] || []).filter(v => v.ca && v.ca.real > 0)
+                    .sort((a,b) => (b.ca.real || 0) - (a.ca.real || 0));
+    const suffVide = periode === "mois" ? "Mois" : "Saison";
+    if(!liste.length){
+      document.getElementById("entete" + "Collab" + suffVide).innerHTML = "";
+      document.getElementById("corps" + "Collab" + suffVide).innerHTML =
+        "<tr><td class='vide'>Importez le fichier de perfs " +
+        (periode === "mois" ? "du mois" : "de la saison") + " : il alimente à la fois le magasin et les collaborateurs.</td></tr>";
+      return;
+    }
+
+    const avecOss = liste.some(v => v.ossAcc !== undefined && v.ossAcc !== null);
+    const entetes = ["Collaborateur","CA réalisé","Δ Prév","Δ N-1","Tx marge","Nb fac.","PMF"]
+                      .concat(avecOss ? ["OSS Acc","Δ N-1","CA Presta"] : []);
+    const suff = periode === "mois" ? "Mois" : "Saison";
+    document.getElementById("entete" + "CollabMois".replace("Mois", suff)).innerHTML =
+      "<tr>" + entetes.map(x => "<th>" + x + "</th>").join("") + "</tr>";
+
+    document.getElementById("corps" + "CollabMois".replace("Mois", suff)).innerHTML = liste.map(v => {
+      const cases = [
+        txt(fmt(v.ca.real, "eur")),
+        delta(ecart(v.ca.real, v.ca.prev)),
+        delta(ecart(v.ca.real, v.ca.n1)),
+        txt(fmt(v.tx ? v.tx.real : null, "pct")),
+        txt(fmt(v.fact ? v.fact.real : null, "ent")),
+        txt(fmt(v.pmf ? v.pmf.real : null, "eur"))
+      ];
+      if(avecOss) cases.push(
+        txt(fmt(v.ossAcc, "eur")),
+        delta(ecart(v.ossAcc, v.ossAccN1)),
+        txt(fmt(v.caPresta, "eur")));
+      return "<tr><td>" + esc(nomCourt(v.nom)) + "</td>" + cases.join("") + "</tr>";
+    }).join("");
+  });
+  rendreAnalyseCollab();
+}
+
+function rendreAnalyseCollab(){
+  const z = document.getElementById("analyseCollab");
+  if(!z) return;
+  const liste = croiserCollab();
+  E._croise = liste;
+
+  if(!liste.length){
+    const importe = (E.gmdr && (E.gmdr.acc.length || E.gmdr.presta.length));
+    z.innerHTML = "<p class='vide'>" + (
+      !importe
+        ? "Importez le classement Podium par famille pour croiser les volumes vendus avec les perfs individuelles."
+        : (!E.magasin
+            ? "Classement chargé (" + E.gmdr.acc.length + " collaborateurs du réseau). Choisissez le magasin en haut de page pour n'afficher que son équipe."
+            : "Aucun collaborateur de " + esc(E.magasin) + " dans ce classement. Vérifiez que le PDF couvre bien ce site.")
+    ) + "</p>";
+    return;
+  }
+
+  const enjeuEquipe = liste.reduce((n,c) => n + c.enjeuPrio, 0);
+  let html = "<p class='sous'>Enjeu de l'équipe sur les familles prioritaires : <strong>" +
+    fmt(enjeuEquipe * 1000, "eur") + "</strong>. L'enjeu d'une famille est l'écart entre le volume vendu et " +
+    "la moyenne des 10 % meilleurs du réseau sur cette famille, retenu quand il y est classé au moins 15 places derrière son rang global. " +
+    "Familles écartées : " + GMDR_EXCLUES.join(", ") + ".</p>";
+
+  html += liste.map(c => {
+    const niveau = c.enjeuPrio >= 60 ? "alerte" : (c.enjeuPrio >= ENJEU_MINI ? "vigilance" : "favorable");
+    const b = [];
+    b.push("<h3>" + esc(c.nom) + (c.rangTot !== null ? " — " + c.rangTot + "<sup>e</sup> au national" : "") + "</h3>");
+
+    // activité
+    const act = [];
+    if(c.caMois !== null) act.push("CA mois " + fmt(c.caMois,"eur") +
+      (c.ecartCaPrev !== null ? " (prév " + fmtEcart(c.ecartCaPrev) + ")" : "") +
+      (c.ecartCaN1 !== null ? " (N-1 " + fmtEcart(c.ecartCaN1) + ")" : ""));
+    if(c.caSaison !== null) act.push("CA saison " + fmt(c.caSaison,"eur") +
+      (c.ecartCaSaisonN1 !== null ? " (N-1 " + fmtEcart(c.ecartCaSaisonN1) + ")" : ""));
+    if(c.factures !== null) act.push(fmt(c.factures,"ent") + " factures");
+    if(c.pmf !== null) act.push("PMF " + fmt(c.pmf,"eur") + (c.panierBas ? " (bas)" : ""));
+    if(c.tx !== null) act.push("marge " + fmt(c.tx,"pct"));
+    if(act.length) b.push("<p><strong>Activité :</strong> " + act.join(" · ") + "</p>");
+
+    // prise de commande
+    const oss = [];
+    if(c.total !== null) oss.push("OSS " + fmt(c.total*1000,"eur"));
+    if(c.ecartObj !== null) oss.push("objectif " + fmtEcart(c.ecartObj));
+    if(c.ecartOssN1 !== null) oss.push("N-1 " + fmtEcart(c.ecartOssN1));
+    if(c.caPresta) oss.push("presta " + fmt(c.caPresta,"eur"));
+    if(c.synergie !== null && c.synergie !== undefined) oss.push("synergie " + fmt(c.synergie,"pct"));
+    if(oss.length) b.push("<p><strong>Prise de commande :</strong> " + oss.join(" · ") + "</p>");
+
+    if(c.marginal) b.push("<p><em>Activité marginale sur la période, les ratios individuels ne sont pas exploitables.</em></p>");
+    if(c.sansPerf) b.push("<p><em>Perfs individuelles non importées pour ce collaborateur.</em></p>");
+
+    // familles
+    const rangs = c.familles.filter(f => f.prioritaire || f.decalage);
+    if(rangs.length){
+      b.push("<div class='enrobe'><table class='tb mini'><thead><tr>" +
+        "<th>Famille</th><th>Vendu</th><th>Rang</th><th>Top 10 % réseau</th><th>Enjeu</th><th>Palier à son rang</th>" +
+        "</tr></thead><tbody>" +
+        rangs.map(f => "<tr" + (f.decalage ? " class='ecart'" : "") + ">" +
+          "<td>" + esc(f.nom) + (f.prioritaire ? "" : " <span class='second'>secondaire</span>") + "</td>" +
+          "<td class='num'>" + fmt(f.valeur*1000,"eur") + "</td>" +
+          "<td class='num'>" + (f.rang === null ? "—" : f.rang) + "</td>" +
+          "<td class='num'>" + (f.top10 === null ? "—" : fmt(f.top10*1000,"eur")) + "</td>" +
+          "<td class='num d " + (f.decalage ? "neg" : "neu") + "'>" + (f.decalage ? fmt(f.enjeu*1000,"eur") : "—") + "</td>" +
+          "<td class='num raf'>" + (f.palier > 0 ? fmt(f.palier*1000,"eur") : "—") + "</td>" +
+        "</tr>").join("") + "</tbody></table></div>");
+    }
+    b.push("<p><strong>Enjeu prioritaire : " + fmt(c.enjeuPrio*1000,"eur") + "</strong>" +
+           (c.enjeuTotal > c.enjeuPrio ? " · toutes familles retenues " + fmt(c.enjeuTotal*1000,"eur") : "") + "</p>");
+    return "<div class='constat " + niveau + "'>" + b.join("") + "</div>";
+  }).join("");
+
+  z.innerHTML = html;
+}
+
+function txt(v){ return "<td class='num'>" + v + "</td>"; }
+function delta(e){ return "<td class='d " + classeEcart(e) + "'>" + fmtEcart(e) + "</td>"; }
+
+/* ===== rendu des tableaux de perf ===== */
+function rendrePerfs(){
+  dessinerTable("corpsMois",         IND_PERF,   E.mois,         "mois");
+  dessinerTable("corpsSaison",       IND_SAISON, E.saison,       "saison");
+  dessinerTable("corpsPrestaMois",   IND_PRESTA, E.prestaMois,   "prestaMois");
+  dessinerTable("corpsPrestaSaison", IND_PRESTA, E.prestaSaison, "prestaSaison");
+  dessinerOss();
+  rendreOssCollab();
+}
+function dessinerTable(idCorps, indicateurs, donnees, groupe){
+  const tb = document.getElementById(idCorps);
+  if(!tb) return;
+  tb.innerHTML = "";
+  indicateurs.forEach(ind => {
+    const d = donnees[ind.k] || {n1:null, prev:null, real:null};
+    const dPrev = ecart(d.real, d.prev);
+    const dN1   = ecart(d.real, d.n1);
+    const raf   = (d.prev !== null && d.real !== null && ind.fmt !== "pct") ? d.prev - d.real : null;
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" + ind.nom + "</td>" +
+      cellule(groupe, ind, "n1")   +
+      cellule(groupe, ind, "prev") +
+      cellule(groupe, ind, "real") +
+      "<td class='num raf'>" + (raf === null ? "—" : fmt(raf, ind.fmt)) + "</td>" +
+      "<td class='d " + classeEcart(dPrev) + "'>" + fmtEcart(dPrev) + "</td>" +
+      "<td class='d " + classeEcart(dN1)   + "'>" + fmtEcart(dN1)   + "</td>";
+    tb.appendChild(tr);
+  });
+}
+function bloc(groupe){ return E[groupe] || {}; }
+function cellule(groupe, ind, col){
+  const d = bloc(groupe)[ind.k] || {};
+  const v = d[col];
+  const aff = (v === null || v === undefined) ? "" : (ind.fmt === "pct" ? (v*100).toFixed(1).replace(".",",") : Math.round(v*100)/100);
+  const suff = ind.fmt === "pct" ? "%" : (ind.fmt === "eur" ? "€" : "");
+  return "<td><input class='saisie' inputmode='decimal' value='" + aff +
+    "' placeholder='" + suff + "' data-g='" + groupe + "' data-k='" + ind.k +
+    "' data-c='" + col + "' data-f='" + ind.fmt + "' onchange='majSaisie(this)'></td>";
+}
+function majSaisie(el){
+  const v = nombre(el.value);
+  const b = bloc(el.dataset.g);
+  if(!b[el.dataset.k]) b[el.dataset.k] = {n1:null, prev:null, real:null};
+  b[el.dataset.k][el.dataset.c] = (v === null) ? null : (el.dataset.f === "pct" ? v/100 : v);
+  rendrePerfs(); rendreAnalyse(); sauver();
+}
+/* OSS par collaborateur : uniquement ceux présents dans les perfs individuelles */
+function rendreOssCollab(){
+  const th = document.getElementById("enteteOssCollab");
+  const tb = document.getElementById("corpsOssCollab");
+  if(!th || !tb) return;
+
+  const perfs = (E.vendeurs.mois || []).length ? E.vendeurs.mois : (E.vendeurs.saison || []);
+  const podium = {};
+  ((E.gmdr && E.gmdr.acc) || []).forEach(r => { podium[r.code] = r; });
+
+  const lignes = perfs.filter(v => v.ca && v.ca.real > 0).map(v => {
+    const p = podium[codeVendeur(v.nom)] || null;
+    return {
+      nom: nomCourt(v.nom),
+      oss:   (v.ossAcc !== undefined && v.ossAcc !== null) ? v.ossAcc : (p ? p.total * 1000 : null),
+      ossN1: (v.ossAccN1 !== undefined && v.ossAccN1 !== null) ? v.ossAccN1 : (p ? p.totalN1 * 1000 : null),
+      prev:  p ? p.prevTot * 1000 : null,
+      presta: (v.ossPresta !== undefined && v.ossPresta !== null) ? v.ossPresta : null,
+      rang: p ? p.rangTot : null
+    };
+  }).filter(l => l.oss !== null).sort((a,b) => (b.oss || 0) - (a.oss || 0));
+
+  th.innerHTML = "<tr><th>Collaborateur</th><th>OSS</th><th>Prév</th><th>Δ Prév</th>" +
+                 "<th>N-1</th><th>Δ N-1</th><th>OSS Presta</th><th>Rang national</th></tr>";
+  if(!lignes.length){
+    tb.innerHTML = "<tr><td colspan='8' class='vide'>Importez les perfs collaborateurs et le TAC ou le classement Podium.</td></tr>";
+    return;
+  }
+  tb.innerHTML = lignes.map(l =>
+    "<tr><td>" + esc(l.nom) + "</td>" +
+    txt(fmt(l.oss,"eur")) + txt(fmt(l.prev,"eur")) + delta(ecart(l.oss, l.prev)) +
+    txt(fmt(l.ossN1,"eur")) + delta(ecart(l.oss, l.ossN1)) +
+    txt(fmt(l.presta,"eur")) + txt(l.rang === null ? "—" : l.rang + "e") + "</tr>").join("");
+}
+
+function dessinerOss(){
+  const tb = document.getElementById("corpsOss");
+  if(!tb) return;
+  tb.innerHTML = "";
+  IND_OSS.forEach(ind => {
+    const d = E.oss[ind.k] || {n1:null, n:null};
+    const ev = (ind.fmt === "pct")
+      ? (d.n !== null && d.n1 !== null ? d.n - d.n1 : null)
+      : ecart(d.n, d.n1);
+    const cls = ev === null ? "neu" : (ind.fmt === "pct" ? (ev > 0.002 ? "pos" : ev < -0.002 ? "neg" : "neu") : classeEcart(ev));
+    const aff = ev === null ? "—"
+      : (ind.fmt === "pct" ? (ev >= 0 ? "+" : "") + (ev*100).toFixed(1).replace(".",",") + " pt" : fmtEcart(ev));
+    const tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" + ind.nom + "</td>" +
+      "<td class='num'>" + fmt(d.n1, ind.fmt) + "</td>" +
+      "<td class='num'>" + fmt(d.n,  ind.fmt) + "</td>" +
+      "<td class='d " + cls + "'>" + aff + "</td>";
+    tb.appendChild(tr);
+  });
+}
+
+function nomCourt(nom){
+  const i = String(nom).indexOf("-");
+  return i > 0 ? nom.slice(i+1) : nom;
+}
+
+/* ===== moteur d'analyse ===== */
+const S_ALERTE = 0.10, S_VIGIL = 0.03, EPS = 1e-9;
+
+function analyser(){
+  const out = [];
+  const A = E.mois, S = E.saison, O = E.oss;
+  const g = (b,k,c) => (b && b[k]) ? b[k][c] : null;
+
+  const eCaPrev = ecart(g(A,"ca","real"), g(A,"ca","prev"));
+  const eCaN1   = ecart(g(A,"ca","real"), g(A,"ca","n1"));
+  const eFactN1 = ecart(g(A,"fact","real"), g(A,"fact","n1"));
+  const ePmfN1  = ecart(g(A,"pmf","real"), g(A,"pmf","n1"));
+
+  /* réalisation de la prévision du mois */
+  if(eCaPrev !== null){
+    if(eCaPrev <= -S_ALERTE + EPS)
+      out.push(c("alerte","CA du mois très en retrait de la prévision",
+        "Le réalisé est à " + fmtEcart(eCaPrev) + " de la prévision (" + fmt(g(A,"ca","real"),"eur") + " contre " + fmt(g(A,"ca","prev"),"eur") + "). L'écart n'est pas rattrapable sans action sur le mois en cours.",
+        "Reconstruire l'atterrissage du mois avec le DM : leviers chiffrés, semaine par semaine."));
+    else if(eCaPrev <= -S_VIGIL + EPS)
+      out.push(c("vigilance","CA du mois sous la prévision",
+        "Retard de " + fmtEcart(eCaPrev) + " sur la prévision. À surveiller sur les deux prochaines semaines.",
+        "Point hebdo d'avancement du CA avec le DM."));
+    else if(eCaPrev >= S_VIGIL - EPS)
+      out.push(c("favorable","Prévision de CA du mois dépassée",
+        "Réalisé supérieur de " + fmtEcart(eCaPrev) + " à la prévision.", null));
+  }
+
+  /* diagnostic croisé flux / panier sur le mois */
+  if(eCaN1 !== null && eFactN1 !== null && ePmfN1 !== null){
+    const flux = eFactN1 <= -S_VIGIL + EPS, panier = ePmfN1 <= -S_VIGIL + EPS;
+    if(eCaN1 <= -S_VIGIL + EPS){
+      if(flux && !panier)
+        out.push(c("alerte","Perte de flux",
+          "Le CA recule de " + fmtAbs(eCaN1) + " sur N-1 pour " + fmtAbs(eFactN1) + " de factures en moins, alors que le panier tient (" + fmtEcart(ePmfN1) + "). Le sujet est l'entrée en magasin et la transformation, pas la vente.",
+          "Travailler l'accueil et la prise en charge en surface de vente : présence vendeur, mise en avant des opérations en cours."));
+      else if(panier && !flux)
+        out.push(c("alerte","Panier moyen en recul",
+          "Le nombre de factures tient (" + fmtEcart(eFactN1) + ") mais le PMF perd " + fmtAbs(ePmfN1) + ". Le trafic est là, la vente complémentaire ne suit pas.",
+          "Relancer la vente additionnelle et la montée en gamme : produits associés, argumentaire, suivi individuel des vendeurs."));
+      else if(panier && flux)
+        out.push(c("alerte","Flux et panier tous deux en retrait",
+          "CA " + fmtEcart(eCaN1) + " sur N-1, factures " + fmtEcart(eFactN1) + ", PMF " + fmtEcart(ePmfN1) + ". Le magasin décroche sur les deux tableaux.",
+          "Diagnostic complet en magasin : implantation, disponibilité produit, effectif présent en surface de vente."));
+      else
+        out.push(c("vigilance","CA en retrait sans cause évidente sur le flux ou le panier",
+          "CA " + fmtEcart(eCaN1) + " sur N-1 alors que factures et panier se tiennent. Regarder le mix produit et les jours d'ouverture.",
+          "Comparer le mix rayon avec N-1 et vérifier le calendrier d'ouverture."));
+    } else if(eCaN1 >= S_VIGIL - EPS){
+      const moteur = (eFactN1 >= ePmfN1) ? "le flux" : "le panier";
+      out.push(c("favorable","CA du mois en progression sur N-1",
+        "CA " + fmtEcart(eCaN1) + " sur N-1, porté surtout par " + moteur + " (factures " + fmtEcart(eFactN1) + ", PMF " + fmtEcart(ePmfN1) + ").", null));
+    }
+  } else if(eCaN1 !== null && eCaN1 <= -S_VIGIL + EPS){
+    out.push(c(eCaN1 <= -S_ALERTE + EPS ? "alerte" : "vigilance","CA du mois en retrait sur N-1",
+      "Écart de " + fmtEcart(eCaN1) + " sur N-1. Le nombre de factures et le PMF manquent pour situer la cause : collez l'export Perfs mois.",
+      eCaN1 <= -S_ALERTE + EPS ? "Situer la cause avec le DM : flux d'entrée, panier moyen, mix produit." : null));
+  }
+
+  /* mois contre saison : rupture récente ou tendance de fond */
+  const eCaN1Saison = ecart(g(S,"ca","real"), g(S,"ca","n1"));
+  if(eCaN1 !== null && eCaN1Saison !== null){
+    const dec = eCaN1 - eCaN1Saison;
+    if(eCaN1 <= -S_VIGIL + EPS && eCaN1Saison >= -S_VIGIL && dec <= -0.05)
+      out.push(c("alerte","Décrochage récent",
+        "Le mois est à " + fmtEcart(eCaN1) + " sur N-1 alors que la saison reste à " + fmtEcart(eCaN1Saison) + ". La dégradation est récente, elle a une cause datable.",
+        "Identifier ce qui a changé le mois dernier : effectif, implantation, concurrence, rupture produit."));
+    else if(eCaN1 <= -S_VIGIL + EPS && eCaN1Saison <= -S_VIGIL + EPS)
+      out.push(c("alerte","Retrait installé sur la saison",
+        "Mois à " + fmtEcart(eCaN1) + " et saison à " + fmtEcart(eCaN1Saison) + " sur N-1. Ce n'est pas un accident de mois, c'est une tendance de fond.",
+        "Construire un plan de redressement sur le trimestre, pas une action ponctuelle."));
+    else if(eCaN1 >= S_VIGIL && eCaN1Saison <= -S_VIGIL + EPS)
+      out.push(c("favorable","Redressement en cours",
+        "Le mois repasse à " + fmtEcart(eCaN1) + " alors que la saison reste à " + fmtEcart(eCaN1Saison) + ". Le point d'inflexion est récent.", null));
+  }
+
+  /* taux de marge du mois */
+  const txReal = g(A,"tx","real"), txN1 = g(A,"tx","n1");
+  if(txReal !== null && txN1 !== null){
+    const pts = (txReal - txN1) * 100;
+    if(pts <= -1.5)
+      out.push(c("alerte","Taux de marge en érosion",
+        "Le taux passe de " + fmt(txN1,"pct") + " à " + fmt(txReal,"pct") + ", soit " + pts.toFixed(1).replace(".",",") + " points. À CA égal, la marge est perdue en remises ou en mix.",
+        "Contrôler les remises accordées et le mix produit vendu ; recadrer la politique de geste commercial."));
+    else if(pts <= -0.5)
+      out.push(c("vigilance","Taux de marge en léger recul",
+        "Perte de " + Math.abs(pts).toFixed(1).replace(".",",") + " point sur N-1 (" + fmt(txReal,"pct") + ").",
+        "Revoir les remises de la période avec le DM."));
+    else if(pts >= 1)
+      out.push(c("favorable","Taux de marge en progression",
+        "Gain de " + pts.toFixed(1).replace(".",",") + " points sur N-1 (" + fmt(txReal,"pct") + ").", null));
+  }
+
+  /* taux de remise, présent dans l'export saison */
+  const rReal = g(S,"txR","real"), rN1 = g(S,"txR","n1");
+  if(rReal !== null && rN1 !== null){
+    const pts = (rReal - rN1) * 100;
+    if(pts >= 0.5)
+      out.push(c("alerte","Taux de remise en hausse",
+        "La remise passe de " + fmt(rN1,"pct") + " à " + fmt(rReal,"pct") + " sur la saison, soit +" + pts.toFixed(1).replace(".",",") + " points. C'est de la marge donnée au comptoir.",
+        "Reprendre les seuils de remise autorisés et contrôler les dérogations vendeur par vendeur."));
+    else if(pts <= -0.5)
+      out.push(c("favorable","Taux de remise maîtrisé",
+        "La remise recule de " + Math.abs(pts).toFixed(1).replace(".",",") + " point sur la saison (" + fmt(rReal,"pct") + ").", null));
+  }
+
+  /* OSS : prise de commande et transformation */
+  const eOsNb   = ecart(g2(O,"nbOs","n"), g2(O,"nbOs","n1"));
+  const eSigne  = ecart(g2(O,"signe","n"), g2(O,"signe","n1"));
+  const ePmS    = ecart(g2(O,"pmSigne","n"), g2(O,"pmSigne","n1"));
+  const trN  = g2(O,"signeOss","n"), trN1 = g2(O,"signeOss","n1");
+  const couv = g2(O,"ossPrev","n");
+
+  if(trN !== null && trN1 !== null){
+    const pts = (trN - trN1) * 100;
+    if(pts <= -1)
+      out.push(c("alerte","Transformation Signé / OSS en baisse",
+        "Le taux passe de " + fmt(trN1,"pct") + " à " + fmt(trN,"pct") + ", soit " + pts.toFixed(1).replace(".",",") + " points. Le magasin voit les clients mais transforme moins en commande.",
+        "Reprendre la prise de commande : relance des devis en attente, suivi du portefeuille client par vendeur."));
+    else if(pts >= 1)
+      out.push(c("favorable","Transformation Signé / OSS en progression",
+        "Le taux gagne " + pts.toFixed(1).replace(".",",") + " points, à " + fmt(trN,"pct") + ".", null));
+  }
+  if(eSigne !== null && eSigne <= -S_VIGIL + EPS){
+    const cause = (ePmS !== null && eOsNb !== null)
+      ? (eOsNb <= ePmS ? "surtout par le trafic one-shot (" + fmtEcart(eOsNb) + ")" : "surtout par le panier signé (" + fmtEcart(ePmS) + ")")
+      : "sans détail disponible";
+    out.push(c("alerte","Signé en retrait sur N-1",
+      "Le signé recule de " + fmtAbs(eSigne) + ", expliqué " + cause + ".",
+      "Fixer un objectif hebdo de devis signés et suivre le stock de devis en attente."));
+  }
+  if(couv !== null){
+    if(couv < 0.9)
+      out.push(c("alerte","OSS insuffisant pour couvrir la prévision",
+        "L'OSS représente " + fmt(couv,"pct") + " de la prévision de CA. Le carnet ne remplira pas l'objectif.",
+        "Renforcer la prise de commande pour reconstituer le carnet avant la fin du trimestre."));
+    else if(couv >= 1)
+      out.push(c("favorable","OSS supérieur à la prévision de CA",
+        "L'OSS couvre " + fmt(couv,"pct") + " de la prévision.", null));
+  }
+  const ossHS = g2(O,"ossHS","n"), ossTot = g2(O,"oss","n");
+  if(ossHS !== null && ossTot) {
+    const partSalon = 1 - ossHS/ossTot;
+    if(partSalon >= 0.15)
+      out.push(c("vigilance","OSS dépendant des salons",
+        "Les salons pèsent " + (partSalon*100).toFixed(1).replace(".",",") + " % de l'OSS. Hors salons, le magasin est à " + fmt(ossHS,"eur") + ".",
+        "Vérifier que la prise de commande tient hors période de salon."));
+  }
+
+  /* vendeurs : écarts au sein de l'équipe */
+  const vend = (E.vendeurs.mois && E.vendeurs.mois.length) ? E.vendeurs.mois : E.vendeurs.saison;
+  if(vend && vend.length >= 2){
+    const avecN1 = vend.filter(v => v.ca && v.ca.n1 && v.ca.real !== null)
+                       .map(v => ({nom: nomCourt(v.nom), e: ecart(v.ca.real, v.ca.n1)}))
+                       .filter(v => v.e !== null);
+    if(avecN1.length >= 2){
+      avecN1.sort((a,b) => a.e - b.e);
+      const bas = avecN1[0], haut = avecN1[avecN1.length-1];
+      if(bas.e <= -S_ALERTE + EPS)
+        out.push(c("alerte","Un vendeur décroche nettement",
+          bas.nom + " est à " + fmtEcart(bas.e) + " sur N-1, quand le mieux placé de l'équipe est à " + fmtEcart(haut.e) + ".",
+          "Point individuel avec " + bas.nom + " : objectifs, accompagnement terrain, plan de progrès à 30 jours."));
+      else if(haut.e - bas.e >= 0.3)
+        out.push(c("vigilance","Écarts marqués entre vendeurs",
+          "De " + fmtEcart(bas.e) + " (" + bas.nom + ") à " + fmtEcart(haut.e) + " (" + haut.nom + ") sur N-1.",
+          "Faire tourner les bonnes pratiques de " + haut.nom + " sur le reste de l'équipe."));
+    }
+    const pmfs = vend.filter(v => v.pmf && v.pmf.real).map(v => ({nom: nomCourt(v.nom), p: v.pmf.real}));
+    if(pmfs.length >= 2){
+      pmfs.sort((a,b) => a.p - b.p);
+      const b0 = pmfs[0], h0 = pmfs[pmfs.length-1];
+      if(b0.p && h0.p / b0.p >= 1.5)
+        out.push(c("vigilance","Panier très inégal selon le vendeur",
+          "PMF de " + fmt(b0.p,"eur") + " (" + b0.nom + ") à " + fmt(h0.p,"eur") + " (" + h0.nom + ").",
+          "Accompagner " + b0.nom + " sur la vente additionnelle et la montée en gamme."));
+    }
+  }
+
+  /* prestation */
+  const PM = E.prestaMois, PS = E.prestaSaison;
+  const sourcePresta = (g(PM,"ca","real") !== null) ? PM : PS;
+  const libPeriode   = (sourcePresta === PM) ? "sur le mois" : "sur la saison";
+
+  const ePrestaPrev = ecart(g(sourcePresta,"ca","real"), g(sourcePresta,"ca","prev"));
+  const ePrestaN1   = ecart(g(sourcePresta,"ca","real"), g(sourcePresta,"ca","n1"));
+  const ePrestaFact = ecart(g(sourcePresta,"fact","real"), g(sourcePresta,"fact","n1"));
+  const ePrestaPmf  = ecart(g(sourcePresta,"pmf","real"), g(sourcePresta,"pmf","n1"));
+
+  if(ePrestaPrev !== null && ePrestaPrev <= -S_ALERTE + EPS)
+    out.push(c("alerte","Prestation loin de la prévision",
+      "CA prestation à " + fmtEcart(ePrestaPrev) + " de la prévision " + libPeriode + " (" + fmt(g(sourcePresta,"ca","real"),"eur") + " contre " + fmt(g(sourcePresta,"ca","prev"),"eur") + ").",
+      "Vérifier le remplissage du planning atelier et la transformation des devis signés."));
+  else if(ePrestaPrev !== null && ePrestaPrev <= -S_VIGIL + EPS)
+    out.push(c("vigilance","Prestation sous la prévision",
+      "CA prestation à " + fmtEcart(ePrestaPrev) + " de la prévision " + libPeriode + ".",
+      "Faire le point sur les heures vendues et les créneaux atelier libres."));
+
+  /* atelier : nombre d'interventions contre valeur de l'intervention */
+  if(ePrestaN1 !== null && ePrestaFact !== null && ePrestaPmf !== null){
+    const moinsInterventions = ePrestaFact <= -S_VIGIL + EPS;
+    const plusGrosses = ePrestaPmf >= S_VIGIL - EPS;
+    const caTient = ePrestaN1 >= -S_VIGIL - EPS;
+    if(moinsInterventions && plusGrosses && caTient)
+      out.push(c("vigilance","Atelier : moins d'interventions, mais plus grosses",
+        "Le nombre de factures recule de " + fmtAbs(ePrestaFact) + " " + libPeriode + " pendant que le PMF progresse de " + fmtEcart(ePrestaPmf) + ". Le CA tient (" + fmtEcart(ePrestaN1) + ") mais sur moins de clients, ce qui fragilise le flux futur.",
+        "Vérifier que la baisse du nombre d'OR vient d'un choix de planning et non de créneaux perdus."));
+    else if(moinsInterventions && plusGrosses)
+      out.push(c("alerte","Atelier : perte de volume non compensée",
+        "Le nombre de factures chute de " + fmtAbs(ePrestaFact) + " " + libPeriode + ". Le panier progresse de " + fmtEcart(ePrestaPmf) + " mais ne rattrape pas : le CA reste à " + fmtEcart(ePrestaN1) + ".",
+        "Remplir le planning atelier : relance des devis en attente, capacité de prise en charge, délai de rendez-vous proposé."));
+    else if(moinsInterventions)
+      out.push(c("alerte","Atelier : flux d'interventions en baisse",
+        "Nombre de factures " + fmtEcart(ePrestaFact) + " " + libPeriode + " sans compensation par le panier (" + fmtEcart(ePrestaPmf) + ").",
+        "Reprendre le remplissage du planning atelier et la relance des devis en attente."));
+    else if(ePrestaPmf <= -S_VIGIL + EPS)
+      out.push(c("vigilance","Atelier : valeur moyenne de l'intervention en recul",
+        "PMF prestation " + fmtEcart(ePrestaPmf) + " " + libPeriode + " pour un nombre d'interventions à " + fmtEcart(ePrestaFact) + ".",
+        "Travailler la vente de prestations complémentaires lors de la prise en charge."));
+  } else if(ePrestaN1 !== null && ePrestaN1 <= -S_VIGIL + EPS){
+    out.push(c(ePrestaN1 <= -S_ALERTE + EPS ? "alerte" : "vigilance","Prestation en retrait sur N-1",
+      "CA prestation " + fmtEcart(ePrestaN1) + " " + libPeriode + ".",
+      "Analyser le taux d'occupation de l'atelier et le stock de devis en attente."));
+  }
+
+  /* prestation : mois contre saison */
+  const ePrestaN1Mois   = ecart(g(PM,"ca","real"), g(PM,"ca","n1"));
+  const ePrestaN1Saison = ecart(g(PS,"ca","real"), g(PS,"ca","n1"));
+  if(ePrestaN1Mois !== null && ePrestaN1Saison !== null && ePrestaN1Mois - ePrestaN1Saison <= -0.05
+     && ePrestaN1Mois <= -S_VIGIL + EPS)
+    out.push(c("alerte","Prestation : décrochage récent",
+      "Le mois est à " + fmtEcart(ePrestaN1Mois) + " sur N-1 alors que la saison tient à " + fmtEcart(ePrestaN1Saison) + ".",
+      "Regarder l'effectif atelier et l'absentéisme du mois écoulé."));
+
+  // le poids n'a de sens qu'entre deux blocs de même période
+  const paires = [[g(A,"ca","real"), g(PM,"ca","real"), "sur le mois"],
+                  [g(S,"ca","real"), g(PS,"ca","real"), "sur la saison"]];
+  const paire = paires.find(([a,p]) => a && p);
+  if(paire){
+    const poids = paire[1] / (paire[0] + paire[1]);
+    out.push(c("neutre","Poids de la prestation",
+      "La prestation représente " + (poids*100).toFixed(1).replace(".",",") + " % du CA total du magasin " + paire[2] + ".", null));
+  }
+
+  /* Podium : OSS par collaborateur, absent des exports Excel */
+  analysePodium(out);
+
+  /* stock */
+  if(E.stock.entree !== null && E.stock.sortie !== null){
+    const solde = E.stock.entree - E.stock.sortie;
+    if(Math.abs(solde) > 0)
+      out.push(c(solde > 0 ? "vigilance" : "neutre","Solde de stock " + (solde > 0 ? "positif" : "négatif"),
+        "Entrées " + fmt(E.stock.entree,"eur") + " pour des sorties de " + fmt(E.stock.sortie,"eur") + ", soit un solde de " + fmt(solde,"eur") + ".",
+        solde > 0 ? "Cadrer les commandes sur le rythme d'écoulement réel." : null));
+  }
+
+  /* points de contrôle */
+  BLOCS.forEach(b => {
+    const ko = [], nc = [];
+    b.points.forEach(p => {
+      const v = E.controles[b.k + "|" + p];
+      if(v === "KO") ko.push(p);
+      if(v === "NC") nc.push(p);
+    });
+    if(ko.length)
+      out.push(c("alerte", b.titre + " : " + ko.length + " point" + (ko.length>1?"s":"") + " KO",
+        ko.join(", ") + ".", "Remettre en conformité : " + ko.join(", ") + "."));
+    if(nc.length)
+      out.push(c("vigilance", b.titre + " : non contrôlé",
+        nc.join(", ") + " n'a pas pu être vérifié pendant la visite.",
+        "Contrôler " + nc.join(", ") + " lors du prochain passage."));
+  });
+
+  const rang = {alerte:0, vigilance:1, neutre:2, favorable:3};
+  out.sort((x,y) => rang[x.niveau] - rang[y.niveau]);
+  return out;
+}
+function g2(bloc, k, role){ return (bloc && bloc[k]) ? bloc[k][role] : null; }
+function c(niveau, titre, detail, action){
+  return {niveau:niveau, titre:titre, detail:detail, action:action};
+}
+
+function analysePodium(out){
+  const S = (E.podium && E.podium.sections) || {};
+  const periode = S.mois ? "mois" : (S.trimestre ? "trimestre" : (S.exercice ? "exercice" : null));
+  if(!periode) return;
+  const lib = {mois:"sur le mois", trimestre:"sur le trimestre", exercice:"sur l'exercice"}[periode];
+  const t = S[periode].total;
+
+  if(t){
+    const eOssAcc = ecart(t.ossAcc, t.ossAccN1);
+    if(eOssAcc !== null){
+      if(eOssAcc <= -S_ALERTE + EPS)
+        out.push(c("alerte","OSS accessoires en fort retrait",
+          "L'OSS accessoires est à " + fmtEcart(eOssAcc) + " sur N-1 " + lib + " (" + fmt(t.ossAcc,"eur") + " contre " + fmt(t.ossAccN1,"eur") + "). C'est le carnet des prochains mois qui se vide.",
+          "Reprendre la prise de commande en magasin : relance des devis, suivi du portefeuille par vendeur."));
+      else if(eOssAcc >= S_ALERTE - EPS)
+        out.push(c("favorable","OSS accessoires en nette progression",
+          "L'OSS accessoires gagne " + fmtEcart(eOssAcc) + " sur N-1 " + lib + ".", null));
+    }
+    const eOssPresta = ecart(t.ossPresta, t.ossPrestaN1);
+    if(eOssPresta !== null && eOssPresta <= -S_ALERTE + EPS)
+      out.push(c("alerte","OSS prestation en fort retrait",
+        "L'OSS prestation est à " + fmtEcart(eOssPresta) + " sur N-1 " + lib + " (" + fmt(t.ossPresta,"eur") + ").",
+        "Vérifier la transformation des devis atelier et le stock de commandes signées."));
+  }
+
+  /* collaborateurs : qui fait décrocher l'OSS */
+  const gens = (S[periode].collabs || []).filter(r => !PAS_UNE_PERSONNE.test(r.nom));
+  const avecOss = gens.filter(r => r.ossAccN1 && r.ossAcc !== null)
+                      .map(r => ({nom: nomCourt(r.nom), e: ecart(r.ossAcc, r.ossAccN1), v: r.ossAcc}))
+                      .filter(r => r.e !== null);
+  if(avecOss.length >= 2){
+    avecOss.sort((a,b) => a.e - b.e);
+    const bas = avecOss[0], haut = avecOss[avecOss.length-1];
+    if(bas.e <= -0.20)
+      out.push(c("alerte","OSS : un collaborateur décroche",
+        bas.nom + " est à " + fmtEcart(bas.e) + " sur N-1 en OSS accessoires (" + fmt(bas.v,"eur") + "), quand le mieux placé est à " + fmtEcart(haut.e) + ".",
+        "Point individuel avec " + bas.nom + " sur la prise de commande : devis en cours, relances, taux de signature."));
+  }
+
+  /* synergie accessoires / prestation */
+  if(t && t.synergie !== null && t.synergie !== undefined){
+    if(t.synergie < 0.15)
+      out.push(c("vigilance","Synergie accessoires / prestation faible",
+        "La synergie ressort à " + fmt(t.synergie,"pct") + " " + lib + ".",
+        "Systématiser la proposition d'atelier lors d'une vente accessoire."));
+    else
+      out.push(c("neutre","Synergie accessoires / prestation",
+        "Elle ressort à " + fmt(t.synergie,"pct") + " " + lib + ".", null));
+  }
+}
+
+function rendreAnalyse(){
+  const zone = document.getElementById("analyse");
+  const liste = analyser();
+  E._constats = liste;
+  const alertes = liste.filter(x => x.niveau === "alerte").length;
+  const vigil   = liste.filter(x => x.niveau === "vigilance").length;
+  document.getElementById("compteConstats").textContent =
+    liste.length ? (alertes + " alerte" + (alertes>1?"s":"") + " · " + vigil + " point" + (vigil>1?"s":"") + " de vigilance") : "";
+  zone.innerHTML = liste.length
+    ? liste.map(x => "<div class='constat " + x.niveau + "'><h3>" + esc(x.titre) + "</h3><p>" +
+        esc(x.detail) + "</p></div>").join("")
+    : "<p class='vide'>Importez les fichiers pour obtenir l'analyse.</p>";
+  synchroniserPA(); rendrePA();
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m])); }
+
+/* ===== blocs de contrôle ===== */
+function rendreBlocs(){
+  const hote = document.getElementById("blocsControle");
+  hote.innerHTML = "";
+  BLOCS.forEach(b => {
+    const sec = document.createElement("div");
+    sec.style.marginBottom = "22px";
+    let html = "<h2>" + b.titre + "</h2>";
+
+    if(b.solde){
+      html += "<div class='solde'>" +
+        "<div><label class='champ' for='stEntree'>Entrée</label><input type='text' inputmode='decimal' id='stEntree' onchange='majStock()'></div>" +
+        "<div><label class='champ' for='stSortie'>Sortie</label><input type='text' inputmode='decimal' id='stSortie' onchange='majStock()'></div>" +
+        "<div><label class='champ'>Solde</label><div class='val num' id='stSolde'>—</div></div>" +
+      "</div>";
+    }
+
+    html += "<div class='grille'>";
+    b.points.forEach(p => {
+      const id = b.k + "|" + p;
+      html += "<div class='point'><div class='nom'>" + esc(p) + "</div>" + segment(id);
+      if(b.encours && p === "Encours clients"){
+        html += "<div class='paire'>" +
+          "<div><label for='encNbre'>Nombre</label><input type='text' inputmode='numeric' id='encNbre' onchange='majEncours()'></div>" +
+          "<div><label for='encValeur'>Valeur</label><input type='text' inputmode='decimal' id='encValeur' onchange='majEncours()'></div>" +
+        "</div>";
+      }
+      html += "</div>";
+    });
+    html += "</div>";
+
+    html += "<label class='champ' for='z_" + b.k + "'>" + esc(b.zone) + "</label>" +
+            "<textarea id='z_" + b.k + "' onchange='majZone(this,\"" + b.k + "\")'></textarea>";
+    sec.innerHTML = html;
+    hote.appendChild(sec);
+  });
+}
+function segment(id){
+  return "<div class='seg' role='group'>" +
+    ["OK","KO","NC"].map(v =>
+      "<button type='button' data-v='" + v + "' aria-pressed='false' data-id='" + esc(id) +
+      "' onclick='basculer(this)'>" + v + "</button>").join("") +
+  "</div>";
+}
+function basculer(btn){
+  const id = btn.dataset.id, v = btn.dataset.v;
+  const actuel = E.controles[id];
+  E.controles[id] = (actuel === v) ? undefined : v;
+  btn.parentElement.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-pressed", String(E.controles[id] === b.dataset.v)));
+  majJauge(); rendreAnalyse(); sauver();
+}
+function majJauge(){
+  const total = BLOCS.reduce((n,b) => n + b.points.length, 0);
+  const faits = Object.values(E.controles).filter(Boolean).length;
+  document.getElementById("jauge").style.width = (total ? Math.round(faits/total*100) : 0) + "%";
+}
+function majStock(){
+  E.stock.entree = nombre(document.getElementById("stEntree").value);
+  E.stock.sortie = nombre(document.getElementById("stSortie").value);
+  const s = (E.stock.entree !== null && E.stock.sortie !== null) ? E.stock.entree - E.stock.sortie : null;
+  document.getElementById("stSolde").textContent = s === null ? "—" : fmt(s,"eur");
+  rendreAnalyse(); sauver();
+}
+function majEncours(){
+  E.encours.nbre   = nombre(document.getElementById("encNbre").value);
+  E.encours.valeur = nombre(document.getElementById("encValeur").value);
+  sauver();
+}
+function majZone(el, k){ E.zones[k] = el.value; sauver(); }
+
+/* ===== alimentation automatique du plan d'action =====
+   Ordre : enjeux chiffrés du Podium, puis OSS, puis le reste de l'analyse,
+   puis le COC, puis ce qui a été dicté. Les enjeux passent devant
+   parce qu'ils sont chiffrés. */
+const ORDRE_SOURCE = {podium:0, oss:1, analyse:2, coc:3, dictee:4, manuel:5};
+
+function signaturePA(l){
+  return CADRE.champs.map(c => l[c.k] === undefined ? "" : String(l[c.k])).join("|");
+}
+function ligneAuto(source, origine, champs){
+  const l = Object.assign({
+    constat:"", action:"", responsable:"DM", echeance: echeanceDefaut(),
+    indicateur:"", priorite:""
+  }, champs, {source: source, origine: origine, auto: true, ordre: ORDRE_SOURCE[source]});
+  l.sig = signaturePA(l);
+  return l;
+}
+
+function lignesAuto(){
+  const out = [];
+
+  // 1. enjeux du Podium, du plus gros au plus petit
+  const enjeux = [];
+  (E._croise || []).forEach(c => {
+    c.familles.filter(f => f.decalage && f.prioritaire).forEach(f =>
+      enjeux.push({montant: f.enjeu, c: c, f: f}));
+  });
+  enjeux.sort((a,b) => b.montant - a.montant).forEach(x =>
+    out.push(ligneAuto("podium", "podium:" + x.c.code + ":" + x.f.nom, {
+      constat: x.c.nom + " — " + x.f.nom + " : " + fmt(x.f.enjeu*1000,"eur") + " d'enjeu, rang " +
+               x.f.rang + " sur la famille contre " + x.c.rangTot + " au global",
+      action: "Travailler la famille " + x.f.nom + " avec " + x.c.nom,
+      indicateur: "Volume " + x.f.nom
+    })));
+
+  // 2. constats OSS, puis 3. reste de l'analyse
+  const estOss = t => /oss|signé|transformation|commande/i.test(t);
+  const vus = new Set();
+  (E._constats || []).filter(x => x.action && estOss(x.titre)).forEach(x => {
+    vus.add(x.titre);
+    out.push(ligneAuto("oss", "oss:" + x.titre,
+      {constat:x.titre, action:x.action, indicateur:indicateurPour(x)}));
+  });
+  ["alerte","vigilance"].forEach(niv =>
+    (E._constats || []).filter(x => x.niveau === niv && x.action && !vus.has(x.titre)).forEach(x => {
+      vus.add(x.titre);
+      out.push(ligneAuto("analyse", "analyse:" + x.titre,
+        {constat:x.titre, action:x.action, indicateur:indicateurPour(x)}));
+    }));
+
+  // 4. actions du COC sur les points qualité en défaut
+  Object.keys(COC_POINTS).forEach(id => {
+    if(E.controles[id] !== "KO") return;
+    const point = id.split("|")[1];
+    COC_POINTS[id].forEach(cle => {
+      const ind = COC.find(i => i.k === cle);
+      if(!ind) return;
+      ind.actions.forEach((a,i) => out.push(ligneAuto("coc", "coc:" + cle + ":" + i, {
+        constat: point,
+        action: a.a + (a.o ? " (" + a.o + ")" : ""),
+        indicateur: ind.nom
+      })));
+    });
+  });
+
+  return out;
+}
+
+/* garde les lignes dictées et celles que l'utilisateur a modifiées,
+   remplace les propositions automatiques restées intactes */
+function synchroniserPA(){
+  const auto = lignesAuto();
+  const cles = new Set(auto.map(l => l.origine));
+  E.pa = E.pa.filter(l => !l.auto || l.sig !== signaturePA(l) || cles.has(l.origine));
+  const presentes = new Set(E.pa.map(l => l.origine));
+  auto.forEach(l => { if(!presentes.has(l.origine)) E.pa.push(l); });
+  E.pa.sort((a,b) => (a.ordre === undefined ? 9 : a.ordre) - (b.ordre === undefined ? 9 : b.ordre));
+}
+
+function preconisations(){ return E.pa; }
+
+/* ===== plan d'action ===== *//* ===== plan d'action ===== */
+function echeanceDefaut(){
+  // la trame demande un plan d'action sur les deux mois suivants
+  const base = E.date ? new Date(E.date) : new Date();
+  base.setMonth(base.getMonth() + 2);
+  return base.toISOString().slice(0,10);
+}
+function ajouterPA(ligne){
+  E.pa.push(Object.assign({constat:"", action:"", responsable:"DM", echeance:echeanceDefaut(), indicateur:"", origine:""}, ligne || {}));
+  rendrePA(); sauver();
+}
+function insererCoc(cle, constat){
+  const ind = COC.find(i => i.k === cle);
+  if(!ind) return 0;
+  let n = 0;
+  ind.actions.forEach(a => {
+    const marque = "coc:" + cle + ":" + a.a.slice(0,40);
+    if(E.pa.some(l => l.origine === marque)) return;
+    E.pa.push({
+      constat: constat || ind.nom,
+      action: a.a + (a.o ? " (" + a.o + ")" : ""),
+      responsable: "DM",
+      echeance: echeanceDefaut(),
+      indicateur: ind.nom,
+      priorite: "",
+      origine: marque
+    });
+    n++;
+  });
+  return n;
+}
+function indicateurPour(p){
+  const t = p.titre.toLowerCase();
+  if(t.includes("flux")) return "Nb factures";
+  if(t.includes("panier")) return "PMF";
+  if(t.includes("marge")) return "Tx marge PR";
+  if(t.includes("prestation")) return "CA prestation";
+  if(t.includes("stock")) return "Solde stock";
+  if(t.includes("ca")) return "CA réalisé";
+  return "Retour au vert";
+}
+function rendrePA(){
+  const th = document.getElementById("entetePA");
+  if(th) th.innerHTML = "<tr>" +
+    CADRE.champs.map(c => "<th style='width:" + c.large + "'>" + esc(c.nom) + "</th>").join("") + "<th></th></tr>";
+
+  const tb = document.getElementById("corpsPA");
+  tb.innerHTML = "";
+  E.pa.forEach((l,i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = CADRE.champs.map(c => {
+      const v = esc(l[c.k] === undefined || l[c.k] === null ? "" : l[c.k]);
+      const attr = "data-i='" + i + "' data-f='" + c.k + "' onchange='majPA(this)'";
+      let ch;
+      if(c.type === "texte") ch = "<textarea " + attr + ">" + v + "</textarea>";
+      else if(c.type === "date") ch = "<input type='date' " + attr + " value='" + v + "'>";
+      else if(c.type === "liste") ch = "<select " + attr + ">" +
+        ["", ...(c.options||[])].map(o => "<option" + (o === l[c.k] ? " selected" : "") + ">" + esc(o) + "</option>").join("") + "</select>";
+      else ch = "<input type='text' " + attr + " value='" + v + "'>";
+      const nomSource = {podium:"enjeu Podium", oss:"OSS", analyse:"analyse chiffrée",
+                         coc:"COC qualité de service", dictee:"dicté"}[l.source];
+      const marque = (c.k === CADRE.champs[0].k && nomSource)
+        ? "<span class='origine'>" + nomSource + "</span>" : "";
+      return "<td>" + ch + marque + "</td>";
+    }).join("") +
+    "<td><button class='sup' title='Supprimer' onclick='supprimerPA(" + i + ")'>×</button></td>";
+    tb.appendChild(tr);
+  });
+  document.getElementById("comptePA").textContent = E.pa.length ? (E.pa.length + " action" + (E.pa.length>1?"s":"")) : "";
+}
+function majPA(el){
+  // la signature ne correspond plus : la ligne échappe désormais à la synchronisation
+  E.pa[+el.dataset.i][el.dataset.f] = el.value;
+  sauver();
+}
+function supprimerPA(i){ E.pa.splice(i,1); rendrePA(); sauver(); }
+
+/* ===== dictée ===== */
+let reco = null, ecoute = false, texteFige = "";
+
+function microDispo(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+
+function basculerMicro(){
+  if(!microDispo()){
+    etatMicro("La dictée n'est pas prise en charge par ce navigateur. Chrome, Edge ou Safari la gèrent ; tapez le texte en attendant.", "ko");
+    return;
+  }
+  if(ecoute){ reco.stop(); return; }
+
+  const Moteur = window.SpeechRecognition || window.webkitSpeechRecognition;
+  reco = new Moteur();
+  reco.lang = "fr-FR";
+  reco.continuous = true;
+  reco.interimResults = true;
+
+  const zone = document.getElementById("dictee");
+  texteFige = zone.value ? zone.value.trim() + " " : "";
+
+  reco.onstart = () => {
+    ecoute = true;
+    document.getElementById("btnMicro").classList.add("actif");
+    document.getElementById("btnMicro").textContent = "Arrêter";
+    etatMicro("Écoute en cours.", "ok");
+  };
+  reco.onresult = ev => {
+    let fige = "", cours = "";
+    for(let i = ev.resultIndex; i < ev.results.length; i++){
+      const t = ev.results[i][0].transcript;
+      if(ev.results[i].isFinal) fige += t + " "; else cours += t;
+    }
+    if(fige) texteFige += fige;
+    zone.value = (texteFige + cours).replace(/\s+/g," ").trim();
+  };
+  reco.onerror = ev => {
+    if(ev.error === "not-allowed" || ev.error === "service-not-allowed")
+      etatMicro("Micro refusé. Autorisez le micro pour ce site dans le navigateur.", "ko");
+    else if(ev.error === "no-speech")
+      etatMicro("Rien entendu. Réessayez plus près du micro.", "ko");
+    else
+      etatMicro("Dictée interrompue (" + ev.error + ").", "ko");
+  };
+  reco.onend = () => {
+    ecoute = false;
+    document.getElementById("btnMicro").classList.remove("actif");
+    document.getElementById("btnMicro").textContent = "Dicter une action";
+    E.dictee = zone.value; sauver();
+  };
+  try{ reco.start(); }
+  catch(e){ etatMicro("Impossible de démarrer la dictée. Le site doit être servi en HTTPS.", "ko"); }
+}
+function etatMicro(txt, cls){
+  const e = document.getElementById("etatMicro");
+  e.textContent = txt; e.className = "etat" + (cls ? " " + cls : "");
+}
+function viderDictee(){
+  document.getElementById("dictee").value = "";
+  texteFige = ""; E.dictee = ""; sauver();
+  etatMicro("Zone vidée.", "");
+}
+
+/* ===== intégration de la dictée au constat de visite ===== */
+function mettreEnForme(){
+  const texte = document.getElementById("dictee").value.trim();
+  if(!texte){ etatMicro("Rien à intégrer.", "ko"); return; }
+  E.dictee = texte;
+  const lignes = structurerLocal(texte);
+  if(!lignes.length){
+    etatMicro("Impossible de découper la dictée. Reformulez, ou complétez le tableau à la main.", "ko");
+    return;
+  }
+  ajouterLignes(lignes, "dictee");
+  etatMicro(lignes.length + " élément(s) intégré(s) au constat de visite.", "ok");
+}
+
+function ajouterLignes(lignes, origine){
+  const qui = (document.getElementById("interlocuteur") || {}).value || E.interlocuteur;
+  // seule la part constat rejoint le constat ; les actions vont aux préconisations
+  const dits = lignes.map(l => (l.constat || "").trim())
+                     .filter(t => t && !/^constaté en visite$/i.test(t));
+  if(dits.length) E.echanges.push({qui: qui, texte: dits.join(". ") + "."});
+
+  lignes.forEach((l,i) => {
+    const ligne = {origine: "dictee:" + Date.now() + ":" + i, source: "dictee",
+                   ordre: ORDRE_SOURCE.dictee, qui: qui};
+    CADRE.champs.forEach(c => ligne[c.k] = (l[c.k] === undefined || l[c.k] === null) ? "" : String(l[c.k]));
+    if(!ligne.echeance) ligne.echeance = echeanceDefaut();
+    E.pa.push(ligne);
+  });
+  viderDictee();
+  rendreDictees(); rendrePA(); sauver();
+}
+
+/* les dictées s'empilent, une ligne par prise de parole */
+function rendreDictees(){
+  const z = document.getElementById("listeDictees");
+  if(!z) return;
+  z.innerHTML = !E.echanges.length ? "" : E.echanges.map((e,i) =>
+    "<div class='dit'><span class='qui'>" + esc(e.qui) + " :</span>" +
+    "<span class='txt'>" + esc(e.texte) + "</span>" +
+    "<button class='sup noprint' title='Retirer' onclick='retirerDictee(" + i + ")'>&times;</button></div>"
+  ).join("");
+}
+function retirerDictee(i){
+  E.echanges.splice(i,1);
+  rendreDictees(); sauver();
+}
+
+/* ===== structuration locale (sans relais) ===== */
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+
+function dateDepuisTexte(txt){
+  const t = txt.toLowerCase();
+  const base = E.date ? new Date(E.date) : new Date();
+  const iso = d => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  const plus = n => { const d = new Date(base); d.setDate(d.getDate()+n); return iso(d); };
+
+  let m = t.match(/(?:le|avant le|pour le|d'ici le|au)\s+(\d{1,2})\s+(janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)/);
+  if(m){
+    const jour = +m[1];
+    const nm = m[2].replace("fevrier","février").replace("aout","août").replace("decembre","décembre");
+    const idx = MOIS.indexOf(nm);
+    const d = new Date(base.getFullYear(), idx, jour);
+    if(d < base) d.setFullYear(d.getFullYear()+1);
+    return iso(d);
+  }
+  m = t.match(/(?:le|avant le|pour le|d'ici le)\s+(\d{1,2})[\/.](\d{1,2})(?:[\/.](\d{2,4}))?/);
+  if(m){
+    const an = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : base.getFullYear();
+    const d = new Date(an, +m[2]-1, +m[1]);
+    if(!m[3] && d < base) d.setFullYear(d.getFullYear()+1);
+    return iso(d);
+  }
+  m = t.match(/(?:sous|dans|d'ici)\s+(\d{1,3})\s*(jours?|semaines?|mois)/);
+  if(m){
+    const n = +m[1];
+    if(/jour/.test(m[2])) return plus(n);
+    if(/semaine/.test(m[2])) return plus(n*7);
+    const d = new Date(base); d.setMonth(d.getMonth()+n); return iso(d);
+  }
+  if(/fin de semaine|cette semaine|vendredi/.test(t)) return plus(5);
+  if(/semaine prochaine/.test(t)) return plus(7);
+  if(/quinzaine|quinze jours/.test(t)) return plus(15);
+  if(/fin du mois|fin de mois/.test(t)){
+    const d = new Date(base.getFullYear(), base.getMonth()+1, 0); return iso(d);
+    }
+  if(/prochaine visite|prochain passage|mois prochain/.test(t)) return plus(30);
+  if(/immédiat|tout de suite|sans délai|aujourd'hui/.test(t)) return iso(base);
+  return null;
+}
+
+function responsableDepuisTexte(txt){
+  const t = txt.toLowerCase();
+  let m = t.match(/responsable\s*:?\s*(?:le |la |l')?([a-zàâçéèêëîïôûùüÿñ' -]{2,30})/);
+  if(m) return titre(m[1]);
+  m = t.match(/(?:confié à|c'est|par le|par la|piloté par)\s+(?:le |la |l')?([a-zàâçéèêëîïôûùüÿñ' -]{2,30})/);
+  if(m) return titre(m[1]);
+  for(const r of RESPONSABLES) if(t.includes(r.toLowerCase())) return r;
+  if(/\bdm\b|directeur de magasin/.test(t)) return "DM";
+  return "";
+}
+function titre(s){
+  s = s.trim().replace(/\s+(pour|avant|d'ici|sous|dans|et|avec|indicateur).*$/,"").trim();
+  if(!s) return "";
+  const cible = RESPONSABLES.find(r => r.toLowerCase() === s.toLowerCase());
+  return cible || s.charAt(0).toUpperCase() + s.slice(1);
+}
+function indicateurDepuisTexte(txt){
+  const m = txt.match(/(?:indicateur|mesuré par|suivi par|suivre)\s*:?\s*([^.;]{2,50})/i);
+  return m ? m[1].trim().replace(/\s+$/,"") : "";
+}
+
+const RE_ACTION = /\b(?:action\s*:?\s*|il faut\s+|il faudra\s+|je demande\s+(?:de\s+|que\s+)?|on doit\s+|prévoir de\s+|mettre en place\s+|remettre en place\s+)/i;
+const RE_CONSTAT_PREFIXE = /^(?:constat\s*:?\s*|on constate\s+(?:que\s+)?|j'ai constaté\s+(?:que\s+)?|le problème\s*(?:c'est\s+que\s+|,\s*)?|problème\s*:?\s*)/i;
+const RE_FRAG_DATE = /(?:,\s*)?\b(?:avant le|pour le|d'ici le|d'ici|sous|dans|au)\s+(?:\d{1,2}\s+(?:janvier|février|fevrier|mars|avril|mai|juin|juillet|août|aout|septembre|octobre|novembre|décembre|decembre)|\d{1,2}[\/.]\d{1,2}(?:[\/.]\d{2,4})?|\d{1,3}\s*(?:jours?|semaines?|mois)|fin du mois|fin de mois|fin de semaine|la semaine prochaine|semaine prochaine|la prochaine visite|prochaine visite|prochain passage|une quinzaine|quinze jours)\b/gi;
+const RE_FRAG_RESP = /(?:,\s*)?\b(?:responsable|confié à|piloté par)\s*:?\s*(?:le |la |l')?[a-zàâçéèêëîïôûùüÿñ' -]{2,30}/gi;
+const RE_FRAG_IND  = /(?:,\s*)?\b(?:indicateur|mesuré par|suivi par)\s*:?\s*[^.;]{2,60}/gi;
+
+function structurerLocal(texte){
+  const bruts = texte
+    .split(/(?:\.\s+|\bpuis\b|\bensuite\b|\bautre action\b|\bdeuxième (?:action|point)\b|\bpar ailleurs\b)/i)
+    .map(s => s.trim()).filter(s => s.length > 5);
+
+  const lignes = [];
+  let constatEnAttente = "";
+
+  bruts.forEach(seg => {
+    const resp = responsableDepuisTexte(seg);
+    const ech  = dateDepuisTexte(seg);
+    const ind  = indicateurDepuisTexte(seg);
+
+    // on retire du texte tout ce qui part déjà dans une autre colonne
+    let reste = seg.replace(RE_FRAG_IND,"").replace(RE_FRAG_RESP,"").replace(RE_FRAG_DATE,"");
+
+    let constat = "", action = "";
+    const m = reste.match(RE_ACTION);
+    if(m && m.index !== undefined){
+      constat = reste.slice(0, m.index);
+      action  = reste.slice(m.index + m[0].length);
+    } else {
+      // pas de marqueur d'action : constat seul si le segment s'annonce comme tel
+      if(RE_CONSTAT_PREFIXE.test(reste)) constat = reste;
+      else action = reste;
+    }
+    constat = propre(constat.replace(RE_CONSTAT_PREFIXE,""));
+    action  = propre(action);
+
+    if(action.length <= 3){
+      // constat orphelin : il attend l'action du segment suivant
+      if(constat) constatEnAttente = constatEnAttente ? constatEnAttente + ". " + constat : constat;
+      return;
+    }
+    if(constatEnAttente){
+      constat = constat ? constatEnAttente + ". " + constat : constatEnAttente;
+      constatEnAttente = "";
+    }
+    lignes.push({
+      constat: majuscule(constat || "Constaté en visite"),
+      action: majuscule(action),
+      responsable: resp || "DM",
+      echeance: ech || echeanceDefaut(),
+      indicateur: ind,
+      origine: "dictee"
+    });
+  });
+
+  // un constat resté sans action devient quand même une ligne à compléter
+  if(constatEnAttente)
+    lignes.push({constat: majuscule(constatEnAttente), action:"", responsable:"DM",
+                 echeance: echeanceDefaut(), indicateur:"", origine:"dictee"});
+  return lignes;
+}
+function propre(s){
+  return String(s || "").replace(/\s+/g," ").replace(/^[,;:.\s]+|[,;:.\s]+$/g,"").trim();
+}
+function majuscule(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
+
+/* ===== restitution selon la trame ===== */
+function compterMots(t){ return String(t||"").trim().split(/\s+/).filter(Boolean).length; }
+
+function phrasesConstat(){
+  const p = [];
+  if(E.impressionSV) p.push("Impression générale de la surface de vente : " + E.impressionSV.toLowerCase() + ".");
+  if(E.txtSV) p.push(E.txtSV.trim());
+  BLOCS.forEach(b => {
+    const ko = b.points.filter(x => E.controles[b.k + "|" + x] === "KO");
+    const nc = b.points.filter(x => E.controles[b.k + "|" + x] === "NC");
+    if(ko.length) p.push(b.titre + " : " + ko.join(", ") + " non conforme" + (ko.length>1?"s":"") + ".");
+    if(nc.length) p.push(b.titre + " : " + nc.join(", ") + " non contrôlé" + (nc.length>1?"s":"") + ".");
+    const z = (E.zones[b.k] || "").trim();
+    if(z) p.push(z);
+  });
+  E.echanges.forEach(e => p.push(e.qui + " : " + e.texte));
+  return p;
+}
+
+function phrasesAnalyse(){
+  const liste = (E._constats || []);
+  const p = liste.filter(x => x.niveau === "alerte" || x.niveau === "vigilance")
+                 .map(x => x.titre + " — " + x.detail);
+  const enjeu = (E._croise || []).reduce((n,c) => n + c.enjeuPrio, 0);
+  if(enjeu >= ENJEU_MINI)
+    p.push("Classement Podium : " + fmt(enjeu*1000,"eur") + " d'enjeu sur les familles prioritaires, " +
+           "mesuré contre les 10 % meilleurs du réseau.");
+  const positifs = liste.filter(x => x.niveau === "favorable");
+  if(positifs.length) p.push("Points favorables : " + positifs.map(x => x.titre.toLowerCase()).join(", ") + ".");
+  return p;
+}
+
+function troisPriorites(){
+  const sortie = E.pa.filter(l => l.priorite)
+                     .sort((a,b) => String(a.priorite).localeCompare(String(b.priorite)))
+                     .slice(0,3);
+  const dejaLa = t => t && sortie.some(l => (l.constat||"") === t || (l.action||"") === t);
+  preconisations().forEach(l => {
+    if(sortie.length < 3 && !dejaLa(l.constat) && !dejaLa(l.action)) sortie.push(l);
+  });
+  return sortie.slice(0,3);
+}
+
+function composerRestitution(){
+  const mag = E.magasin || "le magasin";
+  const dateFr = E.date ? new Date(E.date).toLocaleDateString("fr-FR") : "";
+  const L = [];
+  L.push("Objet : Restitution de visite — " + mag + (dateFr ? " du " + dateFr : ""));
+  L.push("");
+  L.push("Bonjour,");
+  L.push("");
+  L.push("Voici la restitution de la journée de visite" + (dateFr ? " du " + dateFr : "") + " sur " + mag + ".");
+  L.push("");
+
+  L.push("CONSTAT");
+  const cst = phrasesConstat();
+  L.push(cst.length ? cst.join(" ") : "À compléter : impression de surface de vente, points de contrôle, échanges avec les interlocuteurs du site.");
+  L.push("");
+
+  L.push("ANALYSE");
+  const ana = phrasesAnalyse();
+  L.push(ana.length ? ana.join(" ") : "À compléter : importez les fichiers pour alimenter l'analyse.");
+  L.push("");
+
+  L.push("PRÉCONISATIONS / PLAN D'ACTION SUR LES DEUX MOIS");
+  const prec = preconisations();
+  if(prec.length){
+    prec.forEach(l => {
+      const bouts = [l.action || l.constat];
+      if(l.responsable) bouts.push("responsable " + l.responsable);
+      if(l.echeance) bouts.push("échéance " + new Date(l.echeance).toLocaleDateString("fr-FR"));
+      if(l.indicateur) bouts.push("suivi par " + l.indicateur);
+      L.push("- " + bouts.join(", ") + ".");
+    });
+  } else L.push("- À compléter.");
+  L.push("");
+
+  L.push("TROIS PRIORITÉS");
+  const prio = troisPriorites();
+  if(prio.length) prio.forEach((l,i) => L.push((i+1) + ". " + (l.constat ? l.constat + " : " : "") + (l.action || "")));
+  else L.push("1. À définir.");
+  L.push("");
+  L.push("Je reste disponible pour en échanger.");
+
+  const texte = L.join("\n");
+  E.restitution = texte;
+  document.getElementById("restitution").value = texte;
+  majMots();
+  sauver();
+}
+
+function majMots(){
+  const n = compterMots(document.getElementById("restitution").value);
+  const e = document.getElementById("motsRestitution");
+  e.textContent = n + " mots sur " + CADRE.motsMax + " maximum";
+  e.className = "etat" + (n > CADRE.motsMax ? " ko" : (n ? " ok" : ""));
+}
+
+/* ===== synthèse de visite : mail court, tendance et priorités ===== */
+function phrasesTendance(){
+  const p = [];
+  const A = E.mois, S = E.saison;
+  const g = (b,k,c) => (b && b[k]) ? b[k][c] : null;
+  const eMoisN1 = ecart(g(A,"ca","real"), g(A,"ca","n1"));
+  const eMoisPrev = ecart(g(A,"ca","real"), g(A,"ca","prev"));
+  const eSaisonN1 = ecart(g(S,"ca","real"), g(S,"ca","n1"));
+
+  if(g(A,"ca","real") !== null){
+    let t = "Sur le mois, le CA ressort à " + fmt(g(A,"ca","real"), "eur");
+    if(eMoisN1 !== null) t += ", " + (eMoisN1 >= 0 ? "en progression de " + fmtAbs(eMoisN1) : "en retrait de " + fmtAbs(eMoisN1)) + " sur N-1";
+    if(eMoisPrev !== null) t += ", " + (eMoisPrev >= 0
+      ? "au-dessus de la prévision de " + fmtAbs(eMoisPrev)
+      : "en retrait de " + fmtAbs(eMoisPrev) + " sur la prévision");
+    p.push(t + ".");
+  }
+  if(eSaisonN1 !== null && eMoisN1 !== null){
+    if(eMoisN1 < -S_VIGIL && eSaisonN1 >= -S_VIGIL)
+      p.push("La saison reste bien orientée à " + fmtEcart(eSaisonN1) + " : le retrait du mois est récent, donc rattrapable.");
+    else if(eMoisN1 >= S_VIGIL && eSaisonN1 < -S_VIGIL)
+      p.push("Le mois marque un point d'inflexion : la saison était à " + fmtEcart(eSaisonN1) + ", la dynamique repart.");
+    else
+      p.push("Sur la saison à date, la tendance est à " + fmtEcart(eSaisonN1) + ".");
+  }
+
+  const forts = (E._constats || []).filter(x => x.niveau === "favorable").slice(0,2);
+  if(forts.length)
+    p.push("À souligner : " + forts.map(x => x.titre).join(", ") + ".");
+
+  const enjeu = (E._croise || []).reduce((n,c) => n + c.enjeuPrio, 0);
+  if(enjeu >= ENJEU_MINI)
+    p.push("Le classement national montre un potentiel de " + fmt(enjeu*1000, "eur") +
+           " sur les familles prioritaires, à aller chercher avec l'équipe.");
+  return p;
+}
+
+function composerSynthese(){
+  const mag = E.magasin || "le magasin";
+  const dateFr = E.date ? new Date(E.date).toLocaleDateString("fr-FR") : "";
+  const L = [];
+  L.push("Objet : Synthèse de visite — " + mag + (dateFr ? " du " + dateFr : ""));
+  L.push("");
+  L.push("Bonjour,");
+  L.push("");
+  L.push("Merci pour l'accueil et la disponibilité de l'équipe" + (dateFr ? " lors de la visite du " + dateFr : "") + ".");
+  L.push("");
+
+  const tend = phrasesTendance();
+  L.push(tend.length ? tend.join(" ") : "Tendance à compléter une fois les chiffres intégrés.");
+  L.push("");
+
+  L.push("Trois priorités pour le mois à venir :");
+  const prio = troisPriorites();
+  if(prio.length)
+    prio.forEach((l,i) => L.push((i+1) + ". " + (l.action || l.constat || "à définir") +
+      (l.responsable ? " — " + l.responsable : "") +
+      (l.echeance ? ", pour le " + new Date(l.echeance).toLocaleDateString("fr-FR") : "")));
+  else
+    L.push("1. À définir avec le DM.");
+  L.push("");
+
+  L.push("Ces trois chantiers sont à la portée de l'équipe et se suivent simplement. Je repasse le mois prochain pour faire le point ensemble.");
+  L.push("");
+  L.push("Bonne continuation à tous.");
+
+  let texte = L.join("\n");
+  // le format impose 300 mots : on retire d'abord les phrases de tendance secondaires
+  while(compterMots(texte) > CADRE.motsMaxSynthese && tend.length > 1){
+    tend.pop();
+    L[6] = tend.join(" ");
+    texte = L.join("\n");
+  }
+
+  E.synthese = texte;
+  document.getElementById("synthese").value = texte;
+  majMotsSynthese();
+  sauver();
+}
+
+function majMotsSynthese(){
+  const n = compterMots(document.getElementById("synthese").value);
+  const e = document.getElementById("motsSynthese");
+  e.textContent = n + " mots sur " + CADRE.motsMaxSynthese + " maximum";
+  e.className = "etat" + (n > CADRE.motsMaxSynthese ? " ko" : (n ? " ok" : ""));
+}
+
+/* ===== persistance ===== */
+let minuteur = null;
+function sauver(){
+  clearTimeout(minuteur);
+  minuteur = setTimeout(() => memo.ecrire("crv:brouillon", JSON.stringify(E)), 400);
+}
+async function charger(){
+  const brut = await memo.lire("crv:brouillon");
+  if(!brut) return;
+  try{
+    const d = JSON.parse(brut);
+    Object.assign(E, d);
+    document.getElementById("magasin").value = E.magasin || "";
+    document.getElementById("dateVisite").value = E.date || "";
+    document.getElementById("impressionSV").value = E.impressionSV || "";
+    document.getElementById("txtSV").value = E.txtSV || "";
+    document.getElementById("synthese").value = E.synthese || "";
+    majMotsSynthese(); rendreDictees();
+    document.getElementById("dictee").value = E.dictee || "";
+    document.getElementById("restitution").value = E.restitution || "";
+    if(E.interlocuteur) document.getElementById("interlocuteur").value = E.interlocuteur;
+    majMots();
+    BLOCS.forEach(b => {
+      const t = document.getElementById("z_" + b.k);
+      if(t) t.value = E.zones[b.k] || "";
+    });
+    document.querySelectorAll(".seg button").forEach(b =>
+      b.setAttribute("aria-pressed", String(E.controles[b.dataset.id] === b.dataset.v)));
+    const se = document.getElementById("stEntree"), ss = document.getElementById("stSortie");
+    if(se && E.stock.entree !== null) se.value = E.stock.entree;
+    if(ss && E.stock.sortie !== null) ss.value = E.stock.sortie;
+    if(E.stock.entree !== null && E.stock.sortie !== null)
+      document.getElementById("stSolde").textContent = fmt(E.stock.entree - E.stock.sortie, "eur");
+    const en = document.getElementById("encNbre"), ev = document.getElementById("encValeur");
+    if(en && E.encours.nbre !== null) en.value = E.encours.nbre;
+    if(ev && E.encours.valeur !== null) ev.value = E.encours.valeur;
+  }catch(e){}
+}
+function exportJSON(){
+  const nom = "CRV_" + (E.magasin || "magasin").split("-")[0] + "_" + (E.date || "sans-date") + ".json";
+  const blob = new Blob([JSON.stringify(E, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = nom; a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ===== démarrage ===== */
+function demarrer(){
+  const sel = document.getElementById("magasin");
+  sel.innerHTML = "<option value=''>Choisir un magasin</option>" +
+    MAGASINS.map(m => "<option>" + esc(m) + "</option>").join("");
+  sel.onchange = () => { E.magasin = sel.value; sauver(); };
+
+  const dv = document.getElementById("dateVisite");
+  dv.value = new Date().toISOString().slice(0,10);
+  E.date = dv.value;
+  dv.onchange = () => { E.date = dv.value; sauver(); };
+
+  document.getElementById("impressionSV").onchange = e => { E.impressionSV = e.target.value; sauver(); };
+  document.getElementById("txtSV").onchange = e => { E.txtSV = e.target.value; sauver(); };
+  document.getElementById("dictee").onchange = e => { E.dictee = e.target.value; sauver(); };
+  const inter = document.getElementById("interlocuteur");
+  inter.innerHTML = INTERLOCUTEURS.map(i => "<option>" + i + "</option>").join("");
+  inter.value = E.interlocuteur || INTERLOCUTEURS[0];
+  inter.onchange = () => { E.interlocuteur = inter.value; sauver(); };
+  majMots();
+  if(!microDispo()){
+    const b = document.getElementById("btnMicro");
+    b.disabled = true; b.style.opacity = ".5"; b.style.cursor = "not-allowed";
+    etatMicro("Dictée non prise en charge par ce navigateur. Tapez le texte, la mise en forme fonctionne pareil.", "");
+  }
+
+  rendreBlocs();
+  rendreSources();
+  rendrePerfs();
+  rendreCollab();
+  rendrePA();
+  charger().then(() => {
+    rendreSources(); rendrePerfs(); rendreCollab(); rendrePA(); rendreAnalyse(); majJauge();
+  });
+}
+demarrer();
+
+/* enregistrement du service worker : installation sur l'écran d'accueil et
+   fonctionnement hors ligne. Sans lui, l'appli marche quand même. */
+if("serviceWorker" in navigator && location.protocol === "https:"){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
