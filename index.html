@@ -597,6 +597,8 @@ const GMDR_EXCLUES      = ["Tente de toit","Aménagement","Réf. T"];
 const GMDR_PRIORITAIRES = ["Énergie","Stabilisation","Thermique","High-Tech","Mobilité"];
 const ENJEU_MINI = 2;        // en k€ : en dessous, l'écart n'est pas un sujet de visite
 const ECART_RANG_MINI = 15;  // places d'écart au rang global à partir desquelles la famille décroche
+const EXCLUS_TETE = 2;       // les deux premiers du réseau, hors normes, sont écartés de la référence
+const TAILLE_REF = 10;       // taille de l'échantillon de référence
 
 function codeVendeur(nom){
   const s = String(nom || "").trim();
@@ -654,10 +656,14 @@ function referencesFamilles(){
   GMDR_FAMILLES.forEach((f,i) => {
     const vals = reseau.map(r => (r.familles[i] && r.familles[i].valeur) || 0).sort((a,b) => b - a);
     if(!vals.length) return;
-    const tranche = Math.min(10, vals.length);      // les dix meilleurs du réseau
+    // les deux premiers du réseau réalisent des volumes hors normes : les garder
+    // dans la moyenne relèverait artificiellement la référence
+    const debut = vals.length > EXCLUS_TETE + 2 ? EXCLUS_TETE : 0;
+    const ech = vals.slice(debut, debut + TAILLE_REF);
     ref[f] = {
       tries: vals,
-      top10: vals.slice(0, tranche).reduce((a,b) => a + b, 0) / tranche,
+      top10: ech.reduce((a,b) => a + b, 0) / (ech.length || 1),
+      echantillon: ech.length,
       meilleur: vals[0]
     };
   });
@@ -1448,7 +1454,8 @@ function rendreAnalyseCollab(){
   const enjeuEquipe = liste.reduce((n,c) => n + c.enjeuPrio, 0);
   let html = "<p class='sous'>Enjeu retenu pour l'équipe : <strong>" +
     fmt(enjeuEquipe * 1000, "eur") + "</strong>. L'enjeu d'une famille est l'écart entre le volume vendu et " +
-    "la moyenne des dix meilleurs du réseau sur cette famille. Les lignes en gras signalent " +
+    "la référence réseau sur cette famille : la moyenne de dix collaborateurs, les deux " +
+    "premiers écartés parce que leurs volumes sont hors normes. Les lignes en gras signalent " +
     "en plus une faiblesse relative, au moins " + ECART_RANG_MINI + " places derrière son rang global. " +
     "Familles écartées : " + GMDR_EXCLUES.join(", ") + ".</p>";
 
@@ -1485,7 +1492,7 @@ function rendreAnalyseCollab(){
     const rangs = c.familles.filter(f => f.prioritaire || f.decalage);
     if(rangs.length){
       b.push("<div class='enrobe'><table class='tb mini'><thead><tr>" +
-        "<th>Famille</th><th>Vendu</th><th>Rang</th><th>Top 10 réseau</th><th>Enjeu</th><th>Palier à son rang</th>" +
+        "<th>Famille</th><th>Vendu</th><th>Rang</th><th>Réf. réseau</th><th>Enjeu</th><th>Palier à son rang</th>" +
         "</tr></thead><tbody>" +
         rangs.map(f => "<tr" + (f.relatif ? " class='ecart'" : "") + ">" +
           "<td>" + esc(f.nom) + (f.prioritaire ? "" : " <span class='second'>secondaire</span>") + "</td>" +
@@ -1916,7 +1923,7 @@ function analyseEnjeux(out){
         ? " (" + c.familles.filter(f => f.decalage && f.prioritaire).slice(0,2).map(f => f.nom).join(", ") + ")"
         : "")).join(" · ");
     const l = c("alerte","Enjeu Podium : " + fmt(enjeuEquipe*1000,"eur") + " sur les familles prioritaires",
-      "Écart mesuré contre les dix meilleurs du réseau. " + detail + ".",
+      "Écart mesuré contre la référence réseau, les deux premiers écartés. " + detail + ".",
       "Bâtir avec le DM un plan famille par famille sur les collaborateurs concernés.");
     l.epingle = true;
     out.push(l);
@@ -2129,7 +2136,7 @@ function lignesAuto(){
   });
   enjeux.sort((a,b) => b.montant - a.montant).forEach(x =>
     out.push(ligneAuto("podium", "podium:" + x.c.code + ":" + x.f.nom, {
-      constat: x.c.nom + " — " + x.f.nom + " : " + fmt(x.f.enjeu*1000,"eur") + " d'écart aux meilleurs du réseau" +
+      constat: x.c.nom + " — " + x.f.nom + " : " + fmt(x.f.enjeu*1000,"eur") + " d'écart à la référence réseau" +
                (x.f.relatif ? ", et rang " + x.f.rang + " sur la famille contre " + x.c.rangTot + " au global" : ""),
       action: "Travailler la famille " + x.f.nom + " avec " + x.c.nom,
       indicateur: "Volume " + x.f.nom
@@ -2867,7 +2874,7 @@ async function exporterPDF(){
       croise.forEach(c => {
         para(c.nom + (c.rangTot !== null ? "  —  " + c.rangTot + "e au national" : "") +
              "  ·  enjeu retenu " + fmt(c.enjeuPrio*1000,"eur"), 9.5);
-        table(["Famille","Vendu","Rang","Top 10 réseau","Enjeu"],
+        table(["Famille","Vendu","Rang","Réf. réseau","Enjeu"],
           c.familles.filter(f => f.prioritaire).map(f => [
             f.nom, fmt(f.valeur*1000,"eur"), f.rang === null ? "—" : String(f.rang),
             fmt(f.top10*1000,"eur"), f.enjeu > 0 ? fmt(f.enjeu*1000,"eur") : "—"]));
@@ -3282,7 +3289,8 @@ function composerFDR(){
 
   L.push("");
   L.push("MÉTHODE");
-  L.push("Les enjeux sont l'écart aux dix meilleurs du réseau sur chaque famille prioritaire. " +
+  L.push("Les enjeux sont l'écart à la référence réseau sur chaque famille prioritaire, " +
+         "moyenne de dix collaborateurs, les deux premiers écartés parce que hors normes. " +
          "Un sujet n'est retenu que s'il revient sur au moins " + RECURRENCE + " mois : " +
          "un décalage ponctuel n'appelle pas de feuille de route. " +
          "L'évolution du volume indique si l'action engagée a produit un effet, sans établir de lien de cause à effet.");
