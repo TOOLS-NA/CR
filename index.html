@@ -40,6 +40,9 @@ body{
 
 .verrou{position:fixed;inset:0;z-index:200;background:var(--navy);
   display:flex;align-items:center;justify-content:center;padding:24px}
+/* sans cette règle, le display:flex ci-dessus l'emporte sur l'attribut hidden
+   et le voile reste affiché une fois le code validé */
+[hidden]{display:none !important}
 .carteVerrou{background:#fff;border-radius:10px;padding:26px 24px;width:100%;max-width:330px;
   box-shadow:0 18px 50px rgba(0,0,0,.35)}
 .marqueVerrou{font-size:26px;font-weight:700;color:var(--navy);letter-spacing:.02em}
@@ -230,7 +233,8 @@ h2{justify-content:flex-start}
     <p class="sousVerrou">Compte rendu de visite — Narbonne Accessoires</p>
     <div id="blocCode">
       <label class="champ" for="codeAcces">Code d'accès</label>
-      <input type="password" id="codeAcces" inputmode="text" autocomplete="off" spellcheck="false">
+      <input type="password" id="codeAcces" inputmode="text" autocomplete="off"
+             autocapitalize="characters" autocorrect="off" spellcheck="false">
       <button class="btn" style="width:100%;margin-top:10px" onclick="deverrouiller()">Ouvrir</button>
       <p class="msgErr" id="msgAcces"></p>
     </div>
@@ -1150,15 +1154,23 @@ const ACCES = {
 const enc = new TextEncoder();
 const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
 
+/* Les claviers de téléphone remplacent volontiers le tiret court par un tiret
+   long et ajoutent des espaces. On normalise avant de comparer. */
+function normaliserCode(s){
+  return String(s || "")
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, "-")   // tous les tirets
+    .replace(/\s+/g, "")
+    .toUpperCase();
+}
 async function empreinteDe(code){
   if(!window.crypto || !crypto.subtle) return null;
-  return hex(await crypto.subtle.digest("SHA-256", enc.encode(ACCES.sel + ":" + code)));
+  return hex(await crypto.subtle.digest("SHA-256", enc.encode(ACCES.sel + ":" + normaliserCode(code))));
 }
 
 /* clé de chiffrement du brouillon, dérivée du code */
 async function cleDe(code){
   if(!window.crypto || !crypto.subtle) return null;
-  const base = await crypto.subtle.importKey("raw", enc.encode(code), "PBKDF2", false, ["deriveKey"]);
+  const base = await crypto.subtle.importKey("raw", enc.encode(normaliserCode(code)), "PBKDF2", false, ["deriveKey"]);
   return crypto.subtle.deriveKey(
     {name:"PBKDF2", salt: enc.encode(ACCES.sel), iterations: 150000, hash:"SHA-256"},
     base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
@@ -1202,12 +1214,16 @@ async function deverrouiller(){
     return;
   }
   if(e !== ACCES.empreinte){
-    msg.textContent = "Code incorrect.";
+    E._essais = (E._essais || 0) + 1;
+    msg.textContent = E._essais >= 2
+      ? "Code incorrect. Si vous êtes sûr du code, rechargez la page avec Ctrl+Maj+R : une ancienne version peut être en cache."
+      : "Code incorrect.";
     champ.value = ""; champ.focus();
     return;
   }
   memo.cle = await cleDe(code);
-  document.getElementById("verrou").hidden = true;
+  const v = document.getElementById("verrou");
+  v.hidden = true; v.style.display = "none";
   document.body.classList.remove("bloque");
   relancerVerrou();
   demarrerAppli();
@@ -1638,9 +1654,19 @@ function integrerTable(table, z, et){
     E.sources["reseau" + (res.type === "acc" ? "Acc" : "Presta")] = true;
     reprendreReseau();
     et.className = "etat ok";
-    et.textContent = "Export réseau " + (res.type === "acc" ? "Accessoires" : "Prestation") +
-      " intégré : " + res.sites.length + " sites." +
-      (E.magasin ? "" : " Choisissez le magasin pour en extraire la ligne.");
+    const lib = (res.type === "acc" ? "Accessoires" : "Prestation");
+    if(!E.magasin){
+      et.className = "etat ko";
+      et.textContent = "Export réseau " + lib + " lu (" + res.sites.length +
+        " sites), mais aucun magasin n'est sélectionné : choisissez-le en haut de page pour en extraire la ligne.";
+    } else {
+      const moi = res.sites.find(s => s.code === codeCanonique(E.magasin));
+      et.textContent = moi
+        ? lib + " : ligne de " + moi.libelle + " extraite (" + fmt(moi.ca.real, "eur") +
+          " réalisé). Les " + res.sites.length + " sites servent uniquement de référence réseau."
+        : lib + " : " + E.magasin + " est absent de ce fichier de " + res.sites.length + " sites.";
+      if(!moi) et.className = "etat ko";
+    }
     completerCalculs();
     return;
   }
@@ -4286,7 +4312,8 @@ if(ACCES.actif){
   document.body.classList.add("bloque");
   ouvrirVerrou();
 } else {
-  document.getElementById("verrou").hidden = true;
+  const v = document.getElementById("verrou");
+  v.hidden = true; v.style.display = "none";
   demarrerAppli();
 }
 
