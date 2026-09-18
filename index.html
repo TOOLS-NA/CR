@@ -38,6 +38,16 @@ body{
 }
 .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
 
+.verrou{position:fixed;inset:0;z-index:200;background:var(--navy);
+  display:flex;align-items:center;justify-content:center;padding:24px}
+.carteVerrou{background:#fff;border-radius:10px;padding:26px 24px;width:100%;max-width:330px;
+  box-shadow:0 18px 50px rgba(0,0,0,.35)}
+.marqueVerrou{font-size:26px;font-weight:700;color:var(--navy);letter-spacing:.02em}
+.sousVerrou{margin:2px 0 18px;font-size:12.5px;color:var(--gris)}
+.msgErr{margin:10px 0 0;font-size:12.5px;color:var(--rouge);min-height:16px}
+body.bloque{overflow:hidden}
+body.bloque main,body.bloque header{filter:blur(6px);pointer-events:none;user-select:none}
+
 /* ---------- en-tête ---------- */
 header{
   position:sticky;top:0;z-index:50;
@@ -214,12 +224,26 @@ h2{justify-content:flex-start}
 </head>
 <body>
 
+<div id="verrou" class="verrou">
+  <div class="carteVerrou">
+    <div class="marqueVerrou">CRV</div>
+    <p class="sousVerrou">Compte rendu de visite — Narbonne Accessoires</p>
+    <div id="blocCode">
+      <label class="champ" for="codeAcces">Code d'accès</label>
+      <input type="password" id="codeAcces" inputmode="text" autocomplete="off" spellcheck="false">
+      <button class="btn" style="width:100%;margin-top:10px" onclick="deverrouiller()">Ouvrir</button>
+      <p class="msgErr" id="msgAcces"></p>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="hwrap">
     <div class="mark">CRV <span>compte rendu de visite</span></div>
     <select id="magasin" aria-label="Magasin"></select>
     <input type="date" id="dateVisite" aria-label="Date de visite">
     <div class="hactions">
+      <button class="hbtn ghost" onclick="verrouiller()">Verrouiller</button>
       <button class="hbtn ghost" onclick="remiseAZero()">RAZ</button>
       <button class="hbtn ghost" onclick="exportJSON()">Enregistrer</button>
       <button class="hbtn" id="btnPdf" onclick="exporterPDF()">Export PDF</button>
@@ -286,6 +310,29 @@ h2{justify-content:flex-start}
   </table>
 </section>
 
+<section class="pilote" id="blocAtterrissage">
+  <h2>Reste à faire et atterrissage
+    <label class="imp" title="TSM pour la prévision du mois, ou bilan qualité de service.">Import
+      <input type="file" accept=".pdf,.xlsx,.xlsm,.xls,.csv" onchange="importerFichier(this,'tsm')">
+    </label>
+  </h2>
+  <p class="etat sousimp" id="etat_tsm">TSM pour la prévision du mois, ou bilan qualité de service.</p>
+  <p class="sous" id="noteAtterrissage"></p>
+  <div class="enrobe">
+    <table class="tb" style="min-width:700px">
+      <thead><tr><th>Périmètre</th><th>Prévision</th><th>Réalisé</th><th>Potentiel</th><th>Atterrissage</th><th>Reste à faire</th><th>Écart</th></tr></thead>
+      <tbody id="corpsAtterrissage"></tbody>
+    </table>
+  </div>
+  <h3 class="sousTitre">Par collaborateur</h3>
+  <div class="enrobe">
+    <table class="tb" style="min-width:700px">
+      <thead><tr><th>Collaborateur</th><th>Prévision</th><th>Réalisé</th><th>Potentiel</th><th>Atterrissage</th><th>Reste à faire</th><th>Écart</th></tr></thead>
+      <tbody id="corpsAttCollab"></tbody>
+    </table>
+  </div>
+</section>
+
 <!-- 3. COLLABORATEURS, avant l'OSS -->
 <section id="blocCollabMois">
   <h2>Perfs collaborateurs — mois</h2>
@@ -350,6 +397,17 @@ h2{justify-content:flex-start}
 </section>
 
 <!-- 4. CONTRÔLES -->
+<section id="blocQs" hidden>
+  <h2>Satisfaction et qualité de service <span class="compte" id="titreQs"></span></h2>
+  <p class="sous">Bilan trimestriel mesuré, à distinguer des points de contrôle observés pendant la visite.</p>
+  <div class="enrobe">
+    <table class="tb mini" style="min-width:640px">
+      <thead><tr><th>Indicateur</th><th>Valeur</th><th>Tendance</th><th>Statut</th></tr></thead>
+      <tbody id="corpsQs"></tbody>
+    </table>
+  </div>
+</section>
+
 <section id="blocsControle"></section>
 
 <!-- 5. PLAN D'ACTION -->
@@ -384,7 +442,7 @@ h2{justify-content:flex-start}
 <!-- 6. SYNTHÈSE -->
 <section class="actions">
   <h2>Restitution</h2>
-  <p class="sous">Mail de restitution suivant la trame : constat, analyse, préconisations sur deux mois, trois priorités. 1000 mots maximum.</p>
+  <p class="sous">Document de restitution : constats, analyses, plan d'action sur deux mois. 1800 mots maximum. Seul ce qui est hors objectif est repris, précédé de ce qui tient.</p>
   <div class="barre" style="margin-top:0">
     <button class="btn" onclick="composerRestitution()">Composer la restitution</button>
     <span class="etat" id="motsRestitution"></span>
@@ -439,7 +497,7 @@ const CADRE = {
     "Le plan d'action porte sur les deux mois suivants. Reste dans le vocabulaire du réseau,",
     "pas d'action floue du type « sensibiliser l'équipe »."
   ].join(" "),
-  motsMax: 1000,
+  motsMax: 1800,   // la restitution est un document, pas un mail : le plafond laisse de la marge
   motsMaxSynthese: 300
 };
 
@@ -527,9 +585,319 @@ const COC_POINTS = {
 const INTERLOCUTEURS = ["Constat visite","Responsable de magasin","Vendeur","Directeur de concession"];
 const RESPONSABLES = ["DM","Chef d'atelier","Vendeur","Magasinier","RH","Assistante","Tribu Manager"];
 
+/* ===== export réseau : une ligne par site, tout le réseau =====
+   La référence se calcule sur les seuls magasins intégrés : les franchisés
+   évoluent différemment et fausseraient la comparaison de cinq points. */
+function estExportReseau(idx){
+  // le CH90 porte lui aussi Tribu et Site, mais il détaille les vendeurs :
+  // seule l'absence de colonne vendeur signe un export une ligne par site
+  return idx["tribu"] !== undefined && idx["site"] !== undefined &&
+         idx["code-nom prenom vendeur"] === undefined;
+}
+function typeReseau(idx){
+  // seul l'accessoire porte le taux de marge totale et le taux de remise
+  return (idx["tx mg t n-1"] !== undefined || idx["tx r rea"] !== undefined) ? "acc" : "presta";
+}
+
+const IND_RESEAU_ACC = [
+  {k:"ca",    h:{n1:"CA N-1", prev:"CA Prev", real:"CA Rea"}},
+  {k:"marge", h:{n1:"Mg N-1", prev:"Mg Prev", real:["Mg PR","Mg PR Rea","Mg Rea"]}},
+  {k:"tx",    h:{n1:["Tx Mg N-1","Tx Mg PR N-1"], real:["Tx Mg","Tx Mg PR"]}},
+  {k:"txT",   h:{n1:"Tx Mg T N-1", real:"Tx Mg T Rea"}},
+  {k:"txR",   h:{n1:"Tx R N-1", real:"Tx R Rea"}},
+  {k:"fact",  h:{n1:"Nb Fac N-1", prev:"Nb Fac Prev", real:"Nb Fac Rea"}},
+  {k:"pmf",   h:{n1:"PMF N-1", prev:"PMF Prev", real:"PMF Rea"}}
+];
+const IND_RESEAU_PRESTA = [
+  {k:"ca",    h:{n1:"CA N-1", prev:"CA Prev", real:"CA Rea"}},
+  {k:"marge", h:{n1:"Mg N-1", real:["Mg PR","Mg Rea"]}},
+  {k:"tx",    h:{n1:"Tx Mg N-1", real:"Tx Mg"}},
+  {k:"fact",  h:{n1:"Nb Fac N-1", real:"Nb Fac Rea"}},
+  {k:"pmf",   h:{n1:"PMF N-1", real:"PMF Rea"}}
+];
+
+function lireReseau(table){
+  const e = indexEntetes(table);
+  if(!e || !estExportReseau(e.idx)) return null;
+  const type = typeReseau(e.idx);
+  const ind = (type === "acc") ? IND_RESEAU_ACC : IND_RESEAU_PRESTA;
+  const cSite = e.idx["site"], cTribu = e.idx["tribu"];
+
+  const sites = [];
+  table.slice(e.ligne + 1).forEach(r => {
+    const brut = String(r[cSite] || "").trim();
+    if(!brut || /^total/i.test(brut) || /^total/i.test(String(r[cTribu] || ""))) return;
+    const rec = {code: codeCanonique(brut), libelle: brut, tribu: String(r[cTribu] || "").trim()};
+    let rempli = 0;
+    ind.forEach(i => {
+      rec[i.k] = {n1:null, prev:null, real:null};
+      ["n1","prev","real"].forEach(c => {
+        if(!i.h[c]) return;
+        const v = valeur(r, e.idx, i.h[c]);
+        if(v !== null){ rec[i.k][c] = v; rempli++; }
+      });
+    });
+    if(rempli) sites.push(rec);
+  });
+  return sites.length ? {type: type, sites: sites} : null;
+}
+
+/* agrégat d'une liste de sites : on somme les masses, on recalcule les taux */
+function agregerReseau(sites){
+  const som = k => sites.reduce((a,r) => a + ((r[k] && r[k].real) || 0), 0);
+  const somN1 = k => sites.reduce((a,r) => a + ((r[k] && r[k].n1) || 0), 0);
+  const somPrev = k => sites.reduce((a,r) => a + ((r[k] && r[k].prev) || 0), 0);
+  const ca = som("ca"), caN1 = somN1("ca"), caPrev = somPrev("ca");
+  const mg = som("marge"), mgN1 = somN1("marge");
+  const nf = som("fact"), nfN1 = somN1("fact");
+  return {
+    nb: sites.length,
+    ca: {real: ca, n1: caN1, prev: caPrev},
+    marge: {real: mg, n1: mgN1},
+    tx: {real: ca ? mg/ca : null, n1: caN1 ? mgN1/caN1 : null},
+    fact: {real: nf, n1: nfN1},
+    pmf: {real: nf ? ca/nf : null, n1: nfN1 ? caN1/nfN1 : null},
+    evolution: caN1 ? ca/caN1 - 1 : null,
+    ecartPrev: caPrev ? ca/caPrev - 1 : null
+  };
+}
+
+/* ===== TSM : prévision du mois, magasin et collaborateur =====
+   L'exercice court de septembre à août, d'où l'entête « Mois 9 » à « Mois 8 ». */
+const TSM_TYPES = {"CA ACC":"acc", "PRESTA":"presta", "CA ATELIER":"atelier"};
+
+function lireTsm(table){
+  // la ligne d'entête porte Site, Type Global, Code-Nom Prénom et les douze mois
+  let iH = -1;
+  for(let i = 0; i < Math.min(table.length, 12); i++){
+    const l = table[i].map(normH);
+    if(l.includes("site") && l.includes("type global")){ iH = i; break; }
+  }
+  if(iH === -1) return null;
+  const H = table[iH].map(normH);
+  const cSite = H.indexOf("site"), cType = H.indexOf("type global"), cNom = H.indexOf("code-nom prenom");
+  const mois = {};
+  H.forEach((h,c) => { const m = h.match(/^mois (\d{1,2})$/); if(m) mois[+m[1]] = c; });
+  if(Object.keys(mois).length < 12) return null;
+
+  const res = {mois: mois, sites: {}};
+  table.slice(iH + 1).forEach(r => {
+    const brut = String(r[cSite] || "").trim();
+    if(!brut || /^total /i.test(brut)) return;
+    const type = TSM_TYPES[String(r[cType] || "").trim()];
+    const total = /^total /i.test(String(r[cType] || "").trim());
+    if(!type && !total) return;
+    const code = codeCanonique(brut);
+    if(!res.sites[code]) res.sites[code] = {libelle: brut, total:{}, collabs:{}};
+    const cible = res.sites[code];
+    const valeurs = {};
+    Object.keys(mois).forEach(m => { valeurs[m] = nombre(r[mois[m]]); });
+
+    if(total){
+      const t = TSM_TYPES[String(r[cType] || "").trim().replace(/^total /i, "")];
+      if(t) cible.total[t] = valeurs;
+    } else {
+      const nom = String(r[cNom] || "").trim();
+      if(!nom) return;
+      const c = codeVendeur(nom);
+      if(!cible.collabs[c]) cible.collabs[c] = {nom: nom};
+      cible.collabs[c][type] = valeurs;
+    }
+  });
+  return Object.keys(res.sites).length ? res : null;
+}
+
+/* ===== bilan Satisfaction et Qualité de Service (PDF) ===== */
+const QS_FLECHES = {"▲":"hausse", "▼":"baisse", "→":"stable"};
+
+function lireQsPage(items){
+  const el = items.map(it => ({x: it.transform[4], y: it.transform[5], s: it.str.trim()}))
+                  .filter(e => e.s);
+  const titre = el.find(e => /^[0-9A-Z]{3} — /.test(e.s));
+  if(!titre) return null;
+  // le titre sépare par un tiret long, que codeCanonique ne découpe pas
+  const res = {code: codeCanonique(titre.s.split(" — ")[0]), libelle: titre.s,
+               indicateurs: {}, actions: []};
+
+  const ident = el.find(e => /DM\/RM/.test(e.s));
+  if(ident){
+    const m = ident.s.match(/^(.*?)\s*\|\s*DM\/RM\s*:\s*(.*?)\s*\|\s*CR\s*:\s*(.*)$/);
+    if(m){ res.ville = m[1].trim(); res.dm = m[2].trim(); res.cr = m[3].trim(); }
+  }
+  const c = el.find(e => /^Vert \d+$/.test(e.s));
+  if(c){
+    const bande = el.filter(e => Math.abs(e.y - c.y) < 2).sort((a,b) => a.x - b.x).map(e => e.s).join(" ");
+    const m = bande.match(/Vert (\d+).*?Vigilance (\d+).*?Priorité (\d+).*?N\.A\. (\d+)/);
+    if(m) res.compte = {vert:+m[1], vigilance:+m[2], priorite:+m[3], na:+m[4]};
+  }
+
+  // la ligne d'entête donne les abscisses des quatre colonnes, répétées deux fois
+  const ind = el.filter(e => e.s === "Indicateur").sort((a,b) => a.x - b.x);
+  if(!ind.length) return res;
+  const bornes = el.filter(e => Math.abs(e.y - ind[0].y) <= 2 && /^(Indicateur|T4|Δ|Statut)$/.test(e.s))
+                   .sort((a,b) => a.x - b.x).map(e => e.x);
+  const finGauche = bornes[4] ? bornes[4] - 4 : 230;
+  const finDroite = bornes[7] ? bornes[7] + 40 : 9999;
+
+  QS_INDICATEURS.forEach(nom => {
+    const lab = el.find(e => e.s === nom);
+    if(!lab) return;
+    const fin = (lab.x < finGauche) ? finGauche : finDroite;
+    const bande = el.filter(e => Math.abs(e.y - lab.y) <= 4 && e.x > lab.x + 1 && e.x < fin && e.s !== nom)
+                    .sort((a,b) => a.x - b.x);
+    // l'ordre des colonnes est fixe : valeur, évolution, statut. On lit par position,
+    // sinon la Téléphonie qui vaut « OK » passerait pour un statut.
+    const dern = bande[bande.length - 1];
+    res.indicateurs[nom] = {
+      valeur: bande[0] ? bande[0].s : null,
+      evolution: (bande.find(e => QS_FLECHES[e.s]) || {}).s
+                 ? QS_FLECHES[bande.find(e => QS_FLECHES[e.s]).s] : null,
+      statut: (dern && QS_STATUTS[dern.s]) ? dern.s : null
+    };
+  });
+
+  el.filter(e => /^P[12]$/.test(e.s)).forEach(p => {
+    const t = el.find(e => Math.abs(e.y - p.y) <= 3 && e.x > p.x);
+    if(!t) return;
+    const m = t.s.match(/^(.*?)\s+—\s+(.*?)\s*\|\s*Obj\.\s*(.*?)\s*\|\s*(.*)$/);
+    if(m) res.actions.push({rang:p.s, indicateur:m[1].trim(), valeur:m[2].trim(),
+                            objectif:m[3].trim(), tendance:m[4].trim()});
+  });
+  return res;
+}
+
+/* ===== exploitation des sources réseau et du TSM ===== */
+
+/* la ligne du magasin sélectionné alimente les blocs du mois */
+function reprendreReseau(){
+  if(!E.magasin) return;
+  const c = codeCanonique(E.magasin);
+  const prendre = (sites, bloc) => {
+    if(!sites) return;
+    const r = sites.find(x => x.code === c);
+    if(!r) return;
+    const source = {};
+    ["ca","marge","tx","txT","txR","fact","pmf"].forEach(k => { if(r[k]) source[k] = r[k]; });
+    fusionner(E[bloc], source);
+    E.sources[bloc] = true;
+  };
+  prendre(E.reseau.acc, "mois");
+  prendre(E.reseau.presta, "prestaMois");
+}
+
+/* position du magasin parmi les seuls magasins intégrés */
+function positionReseau(type){
+  const sites = E.reseau[type];
+  if(!sites || !E.magasin) return null;
+  const integres = new Set(MAGASINS.map(m => codeCanonique(m)));
+  const retenus = sites.filter(s => integres.has(s.code));
+  if(retenus.length < 2) return null;
+  const c = codeCanonique(E.magasin);
+  const moi = retenus.find(s => s.code === c);
+  if(!moi) return null;
+
+  const evol = s => ecart(s.ca.real, s.ca.n1);
+  const classe = retenus.filter(s => evol(s) !== null).sort((a,b) => evol(b) - evol(a));
+  const agg = agregerReseau(retenus);
+  return {
+    nb: retenus.length,
+    reference: agg,
+    evolution: evol(moi),
+    ecartReseau: (evol(moi) !== null && agg.evolution !== null) ? evol(moi) - agg.evolution : null,
+    rang: classe.findIndex(s => s.code === c) + 1 || null,
+    txR: moi.txR ? moi.txR.real : null,
+    txRReseau: moyennePonderee(retenus, "txR")
+  };
+}
+function moyennePonderee(sites, k){
+  let num = 0, den = 0;
+  sites.forEach(s => {
+    const v = s[k] && s[k].real, ca = s.ca && s.ca.real;
+    if(v !== null && v !== undefined && ca) { num += v * ca; den += ca; }
+  });
+  return den ? num/den : null;
+}
+
+/* Quand le TSM est chargé, sa prévision fait foi : c'est l'objectif du mois,
+   là où la colonne Prev des exports est un lissage. Sans cette reprise,
+   l'analyse se contredirait d'une ligne à l'autre. */
+function reprendreTsm(){
+  if(!E.tsm || !E.magasin) return;
+  [["acc","mois"],["presta","prestaMois"]].forEach(([t,bloc]) => {
+    const v = prevTsm(t);
+    if(v === null || v === undefined) return;
+    if(!E[bloc].ca) E[bloc].ca = {n1:null, prev:null, real:null};
+    E[bloc].ca.prev = v;
+  });
+}
+
+/* prévision du mois de visite : l'exercice court de septembre à août */
+function moisExercice(){
+  const d = E.date ? new Date(E.date) : new Date();
+  return d.getMonth() + 1;          // 1 à 12, la colonne du TSM porte le même numéro
+}
+function prevTsm(type, codeCollab){
+  if(!E.tsm || !E.magasin) return null;
+  const site = E.tsm.sites[codeCanonique(E.magasin)];
+  if(!site) return null;
+  const m = moisExercice();
+  if(codeCollab){
+    const c = site.collabs[codeCollab];
+    return (c && c[type]) ? c[type][m] : null;
+  }
+  if(site.total[type]) return site.total[type][m];
+  // à défaut de ligne Total, on somme les collaborateurs
+  const vals = Object.values(site.collabs).map(c => c[type] ? c[type][m] : null).filter(v => v !== null);
+  return vals.length ? vals.reduce((a,b) => a+b, 0) : null;
+}
+
+/* RAF et atterrissage, magasin et collaborateur */
+function atterrissage(type){
+  const bloc = (type === "acc") ? E.mois : E.prestaMois;
+  const cle  = (type === "acc") ? "mois" : "prestaMois";
+  const prev = prevTsm(type) !== null ? prevTsm(type) : (bloc.ca ? bloc.ca.prev : null);
+  const real = bloc.ca ? bloc.ca.real : null;
+  const pot  = E.potentiel[cle];
+  const att  = (real !== null) ? real + (pot || 0) : null;
+  return {
+    prev: prev, real: real, potentiel: pot, atterrissage: att,
+    reste: (prev !== null && att !== null) ? prev - att : null,
+    ecart: (prev && att !== null) ? att/prev - 1 : null
+  };
+}
+function atterrissageCollabs(){
+  const vend = (E.vendeurs.mois || []).filter(v => v.ca && v.ca.real > 0);
+  const codes = new Set(vend.map(v => codeVendeur(v.nom)));
+  // un collaborateur peut avoir une prévision sans avoir vendu : le manque est réel
+  const site = (E.tsm && E.magasin) ? E.tsm.sites[codeCanonique(E.magasin)] : null;
+  if(site) Object.keys(site.collabs).forEach(c => { if(!PAS_UNE_PERSONNE.test(c) && !/^VD/i.test(c)) codes.add(c); });
+
+  return [...codes].map(c => {
+    const v = vend.find(x => codeVendeur(x.nom) === c);
+    const nomTsm = site && site.collabs[c] ? site.collabs[c].nom : null;
+    // une prévision à zéro sur le mois n'est pas une prévision
+    const brut = prevTsm("acc", c);
+    const prev = brut ? brut : null;
+    const real = v && v.ca ? v.ca.real : null;
+    const pot = E.potentiel.collabs[c] || null;
+    const att = (real !== null) ? real + (pot || 0) : (pot || null);
+    return {
+      code: c, nom: nomCourt(v ? v.nom : (nomTsm || c)),
+      prev: prev, real: real, potentiel: pot, atterrissage: att,
+      reste: (prev !== null && att !== null) ? prev - att : null,
+      ecart: (prev && att !== null) ? att/prev - 1 : null,
+      sansPrev: prev === null, sansReal: !real
+    };
+  })
+  // sans prévision ni réalisé, la ligne n'apprend rien
+  .filter(x => x.prev !== null || x.real)
+  .sort((a,b) => (b.prev || 0) - (a.prev || 0));
+}
+
 /* ===== import de fichiers ===== */
 const AIDES = {
   gmdr:"PDF classement Podium par famille GMDR.",
+  tsm:"TSM pour la prévision du mois, ou bilan qualité de service.",
   fdr:"Comptes rendus enregistrés depuis l'appli, un fichier par site et par mois. Sélection multiple possible.",
   mois:"PDF Podium TAC, ou export Excel Perfs mois.",
   saison:"Alimentée par le tableau « Exercice » du TAC, ou par l'export Excel Perfs saison.",
@@ -584,7 +952,11 @@ async function importerFichier(input, z){
     et.textContent = "Fichier non lu : " + err.message;
   }
   input.value = "";
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAnalyse(); sauver();
+  // la prévision du TSM se réapplique après chaque import : un export chargé
+  // ensuite réécrirait sinon la colonne Prev
+  reprendreTsm(); completerCalculs();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs();
+  rendreAnalyse(); sauver();
 }
 
 /* ===== classement Podium par famille GMDR ===== */
@@ -754,23 +1126,154 @@ function croiserCollab(){
   }).sort((a,b) => b.enjeuPrio - a.enjeuPrio);
 }
 
+/* ===== contrôle d'accès =====
+   Deux niveaux, à ajuster ici.
+
+   1. Le code d'accès demandé à l'ouverture. Seule son empreinte figure dans ce
+      fichier, jamais le code lui-même. Pour changer de code, ouvrez la console
+      du navigateur sur l'appli et lancez :  empreinteDe("VOTRE-CODE")
+      puis recopiez la valeur obtenue dans ACCES.empreinte.
+
+   2. Le jeton d'URL. S'il est renseigné, l'appli ne s'ouvre que si l'adresse
+      porte ?k=<jeton>. Une adresse devinée ne mène nulle part.
+
+   Le brouillon en cours est chiffré avec une clé dérivée du code : un téléphone
+   posé sur un comptoir ne livre pas le dernier compte rendu. */
+const ACCES = {
+  actif: true,
+  empreinte: "0cfa74866a7af3e570f3fa29f2b7c3b00672bfd55df5b93cc6947c0a22f2e443", // code NA2026-27
+  sel: "crv-na-2026",
+  jeton: "d52bd11f76ba",
+  minutesInactivite: 20
+};
+
+const enc = new TextEncoder();
+const hex = buf => [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
+
+async function empreinteDe(code){
+  if(!window.crypto || !crypto.subtle) return null;
+  return hex(await crypto.subtle.digest("SHA-256", enc.encode(ACCES.sel + ":" + code)));
+}
+
+/* clé de chiffrement du brouillon, dérivée du code */
+async function cleDe(code){
+  if(!window.crypto || !crypto.subtle) return null;
+  const base = await crypto.subtle.importKey("raw", enc.encode(code), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey(
+    {name:"PBKDF2", salt: enc.encode(ACCES.sel), iterations: 150000, hash:"SHA-256"},
+    base, {name:"AES-GCM", length:256}, false, ["encrypt","decrypt"]);
+}
+
+const MARQUE = "crv1:";
+async function chiffrer(txt, cle){
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const c = await crypto.subtle.encrypt({name:"AES-GCM", iv: iv}, cle, enc.encode(txt));
+  const tout = new Uint8Array(iv.length + c.byteLength);
+  tout.set(iv); tout.set(new Uint8Array(c), iv.length);
+  return MARQUE + btoa(String.fromCharCode(...tout));
+}
+async function dechiffrer(txt, cle){
+  const brut = Uint8Array.from(atob(txt.slice(MARQUE.length)), ch => ch.charCodeAt(0));
+  const clair = await crypto.subtle.decrypt(
+    {name:"AES-GCM", iv: brut.slice(0,12)}, cle, brut.slice(12));
+  return new TextDecoder().decode(clair);
+}
+
+let minuterieVerrou = null;
+function relancerVerrou(){
+  if(!ACCES.actif || !ACCES.minutesInactivite) return;
+  clearTimeout(minuterieVerrou);
+  minuterieVerrou = setTimeout(verrouiller, ACCES.minutesInactivite * 60000);
+}
+async function verrouiller(){
+  try{ await memo.ecrire("crv:brouillon", JSON.stringify(E)); }catch(e){}
+  location.reload();   // rien de lisible ne subsiste à l'écran
+}
+
+async function deverrouiller(){
+  const champ = document.getElementById("codeAcces");
+  const msg = document.getElementById("msgAcces");
+  const code = (champ.value || "").trim();
+  if(!code){ msg.textContent = "Saisissez le code."; return; }
+
+  const e = await empreinteDe(code);
+  if(e === null){
+    msg.textContent = "Ce navigateur ne permet pas le contrôle d'accès. Servez l'appli en HTTPS.";
+    return;
+  }
+  if(e !== ACCES.empreinte){
+    msg.textContent = "Code incorrect.";
+    champ.value = ""; champ.focus();
+    return;
+  }
+  memo.cle = await cleDe(code);
+  document.getElementById("verrou").hidden = true;
+  document.body.classList.remove("bloque");
+  relancerVerrou();
+  demarrerAppli();
+}
+
+function ouvrirVerrou(){
+  // le jeton d'URL filtre avant même de demander le code
+  if(ACCES.jeton){
+    const k = new URLSearchParams(location.search).get("k");
+    if(k !== ACCES.jeton){
+      document.getElementById("blocCode").innerHTML =
+        "<p class='msgErr'>Lien invalide. Utilisez l'adresse complète qui vous a été communiquée, " +
+        "jeton compris.</p>";
+      return;
+    }
+  }
+  const champ = document.getElementById("codeAcces");
+  champ.focus();
+  champ.onkeydown = ev => { if(ev.key === "Enter") deverrouiller(); };
+}
+
 /* ===== stockage (window.storage en aperçu, localStorage en ligne) ===== */
 const memo = {
-  async lire(k){
+  cle: null,                       // posée au déverrouillage
+  async brut(k){
     try{
       if(window.storage){ const r = await window.storage.get(k); return r ? r.value : null; }
       return localStorage.getItem(k);
     }catch(e){ return null; }
   },
+  async lire(k){
+    const v = await this.brut(k);
+    if(v === null) return null;
+    if(!this.cle || typeof v !== "string" || !v.startsWith(MARQUE)) return v;  // brouillon d'avant
+    try{ return await dechiffrer(v, this.cle); }
+    catch(e){ return null; }        // clé qui ne correspond pas : on repart à blanc
+  },
   async ecrire(k,v){
     try{
-      if(window.storage){ await window.storage.set(k,v); return; }
-      localStorage.setItem(k,v);
+      const charge = this.cle ? await chiffrer(v, this.cle) : v;
+      if(window.storage){ await window.storage.set(k, charge); return; }
+      localStorage.setItem(k, charge);
     }catch(e){}
   }
 };
 
 /* ===== référentiel ===== */
+
+/* Les exports en retard d'une notation portent encore les anciens codes.
+   La correspondance est ici, en un seul endroit. */
+const CODES_ANCIENS = {
+  "111":"14H", "113":"14E", "128":"14J", "129":"14K",
+  "130":"14F", "132":"12A", "143":"14G", "11A":"14M"
+};
+function codeCanonique(v){
+  const c = String(v || "").trim().split("-")[0].trim().toUpperCase();
+  return CODES_ANCIENS[c] || c;
+}
+
+/* les 22 indicateurs du bilan Satisfaction et Qualité de Service, dans l'ordre du document */
+const QS_INDICATEURS = ["Satis. visite","Recommandation","Verbatim +","Google","Fidélisation",
+  "Accueil/dispo.","Téléphonie","Carte fid. proposée","SQC SAV","BDD PI","BDD PO","BDD X",
+  "Port. manquant","Email manquant","Déblocage C&C","Réponse C&C","Emails info C&C",
+  "Traitement DSC","Création DSC","Propreté","Extérieur","Wallet"];
+const QS_STATUTS = {OK:"OK", V:"vigilance", P:"priorité", "N.A.":"non mesuré"};
+
 const MAGASINS = [
   "104-RONCQ ACCESSOIRES", "105-ARPAJON ACCESSOIRES",
   "109-TOULON ACCESSOIRES", "10A-NARBONNE ACCESSOIRES CHENOVE",
@@ -863,6 +1366,10 @@ const E = {
   vendeurs:{mois:[], saison:[], prestaMois:[], prestaSaison:[]},
   podium:{magasin:"", arrete:"", sections:{}},
   fdr:{crs:[], texte:""},
+  reseau:{acc:null, presta:null},
+  tsm:null,
+  qs:{},
+  potentiel:{mois:null, prestaMois:null, collabs:{}},
   gmdr:{acc:[], presta:[], titre:""},
   sources:{},
   controles:{}, zones:{},
@@ -919,6 +1426,7 @@ function fmtEcart(e){
   const s = (e*100).toFixed(1).replace(".",",");
   return (e > 0 ? "+" : "") + s + " %";
 }
+function ordinal(n){ return n === 1 ? "1er" : n + "e"; }
 function fmtAbs(e){
   if(e === null) return "—";
   return (Math.abs(e)*100).toFixed(1).replace(".",",") + " %";
@@ -1123,6 +1631,28 @@ const EXPORTS = {
 };
 
 function integrerTable(table, z, et){
+  // trois formats nouveaux, reconnus avant les exports magasin
+  const res = lireReseau(table);
+  if(res){
+    E.reseau[res.type] = res.sites;
+    E.sources["reseau" + (res.type === "acc" ? "Acc" : "Presta")] = true;
+    reprendreReseau();
+    et.className = "etat ok";
+    et.textContent = "Export réseau " + (res.type === "acc" ? "Accessoires" : "Prestation") +
+      " intégré : " + res.sites.length + " sites." +
+      (E.magasin ? "" : " Choisissez le magasin pour en extraire la ligne.");
+    completerCalculs();
+    return;
+  }
+  const tsm = lireTsm(table);
+  if(tsm){
+    E.tsm = tsm; E.sources.tsm = true;
+    reprendreTsm(); completerCalculs();
+    et.className = "etat ok";
+    et.textContent = "TSM intégré : " + Object.keys(tsm.sites).length + " magasins, prévisions mensuelles.";
+    return;
+  }
+
   let type = identifier(table);
   if(!type){
     et.className = "etat ko";
@@ -1168,7 +1698,7 @@ function integrerTable(table, z, et){
   et.className = "etat ok";
   et.textContent = detail;
   completerCalculs();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAnalyse(); sauver();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreAnalyse(); sauver();
 }
 
 /* ===== remise à zéro pour un nouveau compte rendu ===== */
@@ -1189,6 +1719,7 @@ function remiseAZero(){
   E.interlocuteur = INTERLOCUTEURS[0];
   E.podium = {magasin:"", arrete:"", sections:{}};
   E.gmdr = {acc:[], presta:[], titre:""};
+  E.potentiel = {mois:null, prestaMois:null, collabs:{}};
   E._constats = []; E._croise = [];
   E.relais = relais; E.fdr = fdr;
   E.date = new Date().toISOString().slice(0,10);
@@ -1204,14 +1735,14 @@ function remiseAZero(){
   document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed","false"));
 
   majJauge(); majMots(); majMotsSynthese(); rendreDictees();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendrePA(); rendreAnalyse(); rendreFDR();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendrePA(); rendreAnalyse(); rendreFDR();
   sauver();
   etatMicro("Compte rendu vierge. Commencez par choisir le magasin et importer les fichiers.", "ok");
   if(window.scrollTo) window.scrollTo({top:0, behavior:"smooth"});
 }
 
 function viderChiffres(){
-  ["mois","saison","prestaMois","prestaSaison","oss","gmdr"].forEach(z => {
+  ["mois","saison","prestaMois","prestaSaison","oss","gmdr","tsm"].forEach(z => {
     const e = document.getElementById("etat_" + z);
     if(e){ e.className = "etat sousimp"; e.textContent = AIDES[z] || ""; }
   });
@@ -1221,15 +1752,19 @@ function viderChiffres(){
   E.vendeurs = {mois:[], saison:[], prestaMois:[], prestaSaison:[]};
   E.podium = {magasin:"", arrete:"", sections:{}};
   E.gmdr = {acc:[], presta:[], titre:""};
+  E.reseau = {acc:null, presta:null}; E.tsm = null; E.qs = {};
+  E.potentiel = {mois:null, prestaMois:null, collabs:{}};
   E.sources = {};
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAnalyse(); sauver();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreAnalyse(); sauver();
 }
 function rendreSources(){
   const z = document.getElementById("sources");
   if(!z) return;
   const liste = [["mois","Perfs mois"],["saison","Perfs saison"],["oss","OSS"],
                  ["prestaMois","Presta mois"],["prestaSaison","Presta saison"],
-                 ["podium","TAC PDF"],["gmdr","Classement Podium"]];
+                 ["podium","TAC PDF"],["gmdr","Classement Podium"],
+                 ["reseauAcc","Réseau ACC"],["reseauPresta","Réseau Presta"],
+                 ["tsm","TSM"],["qs","Quali service"]];
   z.innerHTML = liste.map(x =>
     "<span class='puce " + (E.sources[x[0]] ? "ok" : "") + "'>" + x[1] + "</span>").join("");
 }
@@ -1327,7 +1862,22 @@ async function lireFichierPdf(f, et, z){
       const tc = await page.getTextContent();
       lignes = lignes.concat(lignesPdf(tc.items, (page.rotate % 180) !== 0));
     }
-    // un PDF est soit le TAC du magasin, soit le classement national par famille
+    // trois PDF possibles : le bilan qualité, le classement par famille, le TAC du magasin
+    const qs = {};
+    for(let p = 1; p <= doc.numPages; p++){
+      const page = await doc.getPage(p);
+      const tc = await page.getTextContent();
+      const r = lireQsPage(tc.items);
+      if(r && Object.keys(r.indicateurs).length >= 15) qs[r.code] = r;
+    }
+    if(Object.keys(qs).length){
+      E.qs = qs; E.sources.qs = true;
+      et.className = "etat ok";
+      et.textContent = "Bilan qualité de service intégré : " + Object.keys(qs).length +
+        " magasins, " + QS_INDICATEURS.length + " indicateurs.";
+      return;
+    }
+
     const g = lireGmdr(lignes);
     if(g.acc.length || g.presta.length){
       E.gmdr = g; E.sources.gmdr = true;
@@ -1514,6 +2064,81 @@ function rendreAnalyseCollab(){
 
 function txt(v){ return "<td class='num'>" + v + "</td>"; }
 function delta(e){ return "<td class='d " + classeEcart(e) + "'>" + fmtEcart(e) + "</td>"; }
+
+/* ===== rendu de l'atterrissage ===== */
+function celluleEuro(v){ return "<td class='num'>" + fmt(v, "eur") + "</td>"; }
+function cellulePot(cle, v){
+  return "<td><input class='saisie' inputmode='decimal' value='" + (v === null || v === undefined ? "" : v) +
+         "' placeholder='€' data-p='" + cle + "' onchange='majPotentiel(this)'></td>";
+}
+function majPotentiel(el){
+  const v = nombre(el.value);
+  const c = el.dataset.p;
+  if(c.startsWith("collab:")) E.potentiel.collabs[c.slice(7)] = v;
+  else E.potentiel[c] = v;
+  rendreAtterrissage(); rendreAnalyse(); sauver();
+}
+
+function rendreAtterrissage(){
+  const tb = document.getElementById("corpsAtterrissage");
+  if(!tb) return;
+  const note = document.getElementById("noteAtterrissage");
+  const source = E.tsm ? "Prévision issue du TSM, qui fait foi sur le mois" : "Prévision issue des exports, le TSM n'est pas chargé";
+  note.textContent = source + ". Atterrissage = réalisé + potentiel. Reste à faire = prévision - atterrissage. " +
+    "Le potentiel se saisit à la main tant que le suivi CA n'est pas connecté.";
+
+  const ligne = (lib, cle, a) =>
+    "<tr><td>" + lib + "</td>" + celluleEuro(a.prev) + celluleEuro(a.real) + cellulePot(cle, a.potentiel) +
+    celluleEuro(a.atterrissage) +
+    "<td class='num d " + (a.reste === null ? "neu" : (a.reste > 0 ? "neg" : "pos")) + "'>" +
+      (a.reste === null ? "—" : fmt(a.reste, "eur")) + "</td>" +
+    "<td class='d " + classeEcart(a.ecart) + "'>" + fmtEcart(a.ecart) + "</td></tr>";
+
+  tb.innerHTML = ligne("Accessoires", "mois", atterrissage("acc")) +
+                 ligne("Prestation", "prestaMois", atterrissage("presta"));
+
+  const tc = document.getElementById("corpsAttCollab");
+  const liste = atterrissageCollabs();
+  if(!liste.length){
+    tc.innerHTML = "<tr><td colspan='7' class='vide'>Importez le TSM et les perfs collaborateurs du mois.</td></tr>";
+    return;
+  }
+  tc.innerHTML = liste.map(c =>
+    "<tr><td>" + esc(c.nom) +
+      (c.sansPrev ? " <span class='second'>sans prévision</span>" : "") +
+      (c.sansReal ? " <span class='second'>rien de facturé</span>" : "") + "</td>" +
+    celluleEuro(c.prev) + celluleEuro(c.real) + cellulePot("collab:" + c.code, c.potentiel) +
+    celluleEuro(c.atterrissage) +
+    "<td class='num d " + (c.reste === null ? "neu" : (c.reste > 0 ? "neg" : "pos")) + "'>" +
+      (c.reste === null ? "—" : fmt(c.reste, "eur")) + "</td>" +
+    "<td class='d " + classeEcart(c.ecart) + "'>" + fmtEcart(c.ecart) + "</td></tr>").join("");
+}
+
+/* ===== rendu du bilan qualité ===== */
+function qsDuMagasin(){
+  if(!E.magasin || !E.qs) return null;
+  return E.qs[codeCanonique(E.magasin)] || null;
+}
+function rendreQs(){
+  const sec = document.getElementById("blocQs");
+  if(!sec) return;
+  const q = qsDuMagasin();
+  sec.hidden = !q;
+  if(!q) return;
+  document.getElementById("titreQs").textContent = q.compte
+    ? q.compte.vert + " au vert · " + q.compte.vigilance + " en vigilance · " +
+      q.compte.priorite + " en priorité" + (q.compte.na ? " · " + q.compte.na + " non mesurés" : "")
+    : "";
+  const cls = {OK:"pos", V:"neu", P:"neg"};
+  const fl = {hausse:"▲", baisse:"▼", stable:"→"};
+  document.getElementById("corpsQs").innerHTML = QS_INDICATEURS.map(n => {
+    const v = q.indicateurs[n] || {};
+    return "<tr" + (v.statut === "P" ? " class='ecart'" : "") + "><td>" + esc(n) + "</td>" +
+      "<td class='num'>" + esc(v.valeur || "—") + "</td>" +
+      "<td class='num'>" + (fl[v.evolution] || "—") + "</td>" +
+      "<td class='d " + (cls[v.statut] || "neu") + "'>" + (QS_STATUTS[v.statut] || "—") + "</td></tr>";
+  }).join("");
+}
 
 /* ===== rendu des tableaux de perf ===== */
 function rendrePerfs(){
@@ -1869,6 +2494,9 @@ function analyser(){
 
   /* Podium et OSS : enjeux chiffrés, mis en tête */
   analyseEnjeux(out);
+  analyseReseau(out);
+  analyseAtterrissage(out);
+  analyseQs(out);
   analysePodium(out);
 
   /* stock */
@@ -1912,6 +2540,130 @@ function c(niveau, titre, detail, action){
 }
 
 /* enjeux chiffrés du Podium : ils ouvrent l'analyse et le compte rendu */
+/* position du magasin dans le réseau : sépare un problème magasin d'un mouvement de marché */
+function analyseReseau(out){
+  const p = positionReseau("acc");
+  if(!p) return;
+  const r = p.reference;
+  const bouts = [];
+  if(p.evolution !== null) bouts.push("magasin " + fmtEcart(p.evolution) + " sur N-1");
+  if(r.evolution !== null) bouts.push("réseau " + fmtEcart(r.evolution));
+  if(p.rang) bouts.push(ordinal(p.rang) + " sur " + p.nb + " magasins intégrés");
+
+  if(p.ecartReseau !== null){
+    let niveau = "neutre", detail = bouts.join(" · ") + ".", action = null;
+    if(p.ecartReseau <= -0.10){
+      niveau = "alerte";
+      detail += " Le magasin décroche de " + fmtAbs(p.ecartReseau) + " par rapport au réseau : " +
+                "l'écart lui est propre, ce n'est pas un mouvement de marché.";
+      action = "Situer avec le DM ce qui distingue le magasin du reste du réseau sur la période.";
+    } else if(p.ecartReseau >= 0.10){
+      niveau = "favorable";
+      detail += " Le magasin fait " + fmtAbs(p.ecartReseau) + " de mieux que le réseau.";
+    } else if(p.evolution !== null && p.evolution < -S_VIGIL && r.evolution !== null && r.evolution < -S_VIGIL){
+      niveau = "vigilance";
+      detail += " Le recul est partagé par le réseau : la cause est au moins en partie extérieure au magasin.";
+    }
+    const l = c(niveau, "Position dans le réseau", detail, action);
+    l.epingle = true;
+    out.push(l);
+  }
+
+  // le taux de remise se compare bien mieux au réseau qu'à lui-même
+  if(p.txR !== null && p.txRReseau !== null){
+    const pts = (p.txR - p.txRReseau) * 100;
+    if(pts >= 1)
+      out.push(c("alerte","Taux de remise très au-dessus du réseau",
+        "Le magasin remise à " + fmt(p.txR,"pct") + " contre " + fmt(p.txRReseau,"pct") + " pour le réseau, " +
+        "soit " + pts.toFixed(1).replace(".",",") + " points de plus.",
+        "Reprendre les seuils de remise autorisés et contrôler les dérogations."));
+  }
+}
+
+/* reste à faire : ce qu'il manque pour tenir la prévision du mois */
+function analyseAtterrissage(out){
+  [["acc","Accessoires"],["presta","Prestation"]].forEach(([t,lib]) => {
+    const a = atterrissage(t);
+    if(a.prev === null || a.atterrissage === null) return;
+    if(a.reste === null) return;
+    if(a.ecart <= -S_ALERTE + EPS)
+      out.push(c("alerte", lib + " : atterrissage très en dessous de la prévision",
+        "Il manque " + fmt(a.reste,"eur") + " pour tenir les " + fmt(a.prev,"eur") + " du mois" +
+        (a.potentiel ? ", potentiel de " + fmt(a.potentiel,"eur") + " déjà compté" : ", aucun potentiel déclaré") + ".",
+        "Construire avec le DM le plan de rattrapage sur les jours restants, jalonné à la semaine."));
+    else if(a.ecart <= -S_VIGIL + EPS)
+      out.push(c("vigilance", lib + " : prévision du mois non couverte",
+        "Reste " + fmt(a.reste,"eur") + " à trouver sur une prévision de " + fmt(a.prev,"eur") + ".",
+        "Point hebdomadaire sur le reste à faire."));
+    else if(a.ecart >= S_VIGIL - EPS)
+      out.push(c("favorable", lib + " : prévision du mois dépassée",
+        "Atterrissage à " + fmt(a.atterrissage,"eur") + " pour " + fmt(a.prev,"eur") + " prévus.", null));
+  });
+
+  const collabs = atterrissageCollabs().filter(c2 => c2.prev && c2.ecart !== null);
+  if(collabs.length >= 2){
+    const bas = collabs.slice().sort((a,b) => a.ecart - b.ecart)[0];
+    if(bas.ecart <= -0.30)
+      out.push(c("alerte","Un collaborateur très loin de sa prévision",
+        bas.nom + " atterrit à " + fmtEcart(bas.ecart) + " de sa prévision, soit " +
+        fmt(bas.reste,"eur") + " à trouver.",
+        "Point individuel avec " + bas.nom + " : objectif du mois, portefeuille, accompagnement."));
+  }
+  const sansRien = atterrissageCollabs().filter(c2 => c2.prev && c2.sansReal);
+  if(sansRien.length)
+    out.push(c("vigilance","Prévision sans réalisé",
+      sansRien.map(c2 => c2.nom).join(", ") + " porte" + (sansRien.length>1?"nt":"") +
+      " une prévision sans rien avoir facturé sur le mois.",
+      "Vérifier la présence et l'affectation de ces collaborateurs."));
+}
+
+/* bilan qualité de service : mesuré et trimestriel, il complète les points de contrôle */
+function analyseQs(out){
+  const q = qsDuMagasin();
+  if(!q) return;
+  const prio = QS_INDICATEURS.filter(n => (q.indicateurs[n] || {}).statut === "P");
+  const vig  = QS_INDICATEURS.filter(n => (q.indicateurs[n] || {}).statut === "V");
+  const val  = n => (q.indicateurs[n] || {}).valeur || "";
+
+  if(prio.length){
+    const detail = prio.map(n => n + " " + val(n)).join(" · ");
+    out.push(c("alerte","Qualité de service : " + prio.length + " indicateur" +
+      (prio.length>1?"s":"") + " en priorité", detail + ".",
+      "Reprendre le plan d'action du bilan qualité, indicateur par indicateur."));
+  }
+  if(vig.length)
+    out.push(c("vigilance","Qualité de service : " + vig.length + " indicateur" +
+      (vig.length>1?"s":"") + " en vigilance",
+      vig.map(n => n + " " + val(n)).join(" · ") + ".", null));
+
+  // un indicateur hors objectif qui se redresse n'appelle pas le même discours
+  const redresse = QS_INDICATEURS.filter(n => {
+    const v = q.indicateurs[n] || {};
+    return (v.statut === "P" || v.statut === "V") && v.evolution === "hausse";
+  });
+  if(redresse.length)
+    out.push(c("favorable","Qualité de service : indicateurs en redressement",
+      redresse.map(n => n + " " + val(n)).join(", ") + " progresse" + (redresse.length>1?"nt":"") +
+      " par rapport au trimestre précédent.", null));
+
+  const verts = QS_INDICATEURS.filter(n => (q.indicateurs[n] || {}).statut === "OK");
+  if(verts.length >= 10)
+    out.push(c("favorable","Qualité de service : socle en place",
+      verts.length + " indicateurs sur " + QS_INDICATEURS.length + " sont dans l'objectif.", null));
+
+  // écart entre le mesuré et l'observé du jour
+  const croisements = [["Propreté","sv|Propreté"],["Extérieur","sv|Aspect extérieur"],["Téléphonie","quali|Wallet"]];
+  croisements.forEach(([ind, ctl]) => {
+    const v = q.indicateurs[ind];
+    if(!v || v.statut !== "P") return;
+    if(E.controles[ctl] === "OK")
+      out.push(c("vigilance","Écart entre le mesuré et l'observé",
+        ind + " ressort en priorité au bilan (" + v.valeur + ") alors que le point correspondant " +
+        "a été relevé conforme pendant la visite.",
+        "Confronter le constat du jour et la mesure trimestrielle avec le DM."));
+  });
+}
+
 function analyseEnjeux(out){
   const croise = E._croise || [];
   const enjeuEquipe = croise.reduce((n,c) => n + c.enjeuPrio, 0);
@@ -2110,7 +2862,7 @@ function majZone(el, k){ E.zones[k] = el.value; sauver(); }
    Ordre : enjeux chiffrés du Podium, puis OSS, puis le reste de l'analyse,
    puis le COC, puis ce qui a été dicté. Les enjeux passent devant
    parce qu'ils sont chiffrés. */
-const ORDRE_SOURCE = {podium:0, oss:1, analyse:2, coc:3, dictee:4, manuel:5};
+const ORDRE_SOURCE = {podium:0, oss:1, analyse:2, qs:3, coc:4, dictee:5, manuel:6};
 
 function signaturePA(l){
   return CADRE.champs.map(c => l[c.k] === undefined ? "" : String(l[c.k])).join("|");
@@ -2157,13 +2909,25 @@ function lignesAuto(){
         {constat:x.titre, action:x.action, indicateur:indicateurPour(x)}));
     }));
 
-  // 4. actions du COC sur les points qualité en défaut
+  // 4. plan d'action du bilan qualité : plus précis que le COC, il porte valeur et objectif
+  const q = qsDuMagasin();
+  if(q) q.actions.forEach((a,i) => out.push(ligneAuto("qs", "qs:" + a.indicateur + ":" + i, {
+    constat: "Qualité de service — " + a.indicateur + " : " + a.valeur +
+             " pour un objectif " + a.objectif + " (" + a.tendance.toLowerCase() + ")",
+    action: actionQs(a.indicateur),
+    indicateur: a.indicateur,
+    priorite: ""          // le rang P1 du bilan reste dans le constat,
+  })));                   // il ne préempte pas les trois priorités de la synthèse
+
+  // 5. actions du COC sur les points qualité en défaut, pour ce que le bilan ne couvre pas
+  const couvertQs = new Set((q ? q.actions : []).map(a => a.indicateur.toLowerCase()));
   Object.keys(COC_POINTS).forEach(id => {
     if(E.controles[id] !== "KO") return;
     const point = id.split("|")[1];
     COC_POINTS[id].forEach(cle => {
       const ind = COC.find(i => i.k === cle);
       if(!ind) return;
+      if([...couvertQs].some(x => ind.nom.toLowerCase().includes(x.split(" ")[0].toLowerCase()))) return;
       ind.actions.forEach((a,i) => out.push(ligneAuto("coc", "coc:" + cle + ":" + i, {
         constat: point,
         action: a.a + (a.o ? " (" + a.o + ")" : ""),
@@ -2173,6 +2937,35 @@ function lignesAuto(){
   });
 
   return out;
+}
+
+/* le bilan qualité fournit déjà le libellé d'action, on le reprend tel quel */
+const ACTIONS_QS = {
+  "Satis. visite":"Relire les retours clients en brief équipe, rappeler les engagements NA et cibler un irritant magasin à corriger chaque semaine.",
+  "Recommandation":"Relire les retours clients en brief équipe, rappeler les engagements NA et cibler un irritant magasin à corriger chaque semaine.",
+  "Verbatim +":"Relire les retours clients en brief équipe, rappeler les engagements NA et cibler un irritant magasin à corriger chaque semaine.",
+  "Accueil/dispo.":"Relire les retours clients en brief équipe, rappeler les engagements NA et cibler un irritant magasin à corriger chaque semaine.",
+  "Google":"Inciter les clients satisfaits à déposer un avis Google et animer la page avec photos, posts et informations à jour.",
+  "Téléphonie":"Réappliquer la charte téléphonie : téléphone disponible, message d'accueil, écoute boîte vocale et rappel client dans la journée.",
+  "Fidélisation":"Piloter les ventes de cartes en réunion hebdo, identifier les collaborateurs en retard et retravailler l'argumentaire fidélité.",
+  "Carte fid. proposée":"Piloter les ventes de cartes en réunion hebdo, identifier les collaborateurs en retard et retravailler l'argumentaire fidélité.",
+  "Wallet":"Piloter les ventes de cartes en réunion hebdo, identifier les collaborateurs en retard et retravailler l'argumentaire fidélité.",
+  "SQC SAV":"Suivre les réclamations en cours, cadrer les réponses sous 48h et briefer l'équipe sur les causes récurrentes.",
+  "BDD PI":"Requalifier les fiches en anomalie, rappeler les règles de création sous X3 et contrôler chaque semaine les collaborateurs concernés.",
+  "BDD PO":"Requalifier les fiches en anomalie, rappeler les règles de création sous X3 et contrôler chaque semaine les collaborateurs concernés.",
+  "BDD X":"Requalifier les fiches en anomalie, rappeler les règles de création sous X3 et contrôler chaque semaine les collaborateurs concernés.",
+  "Port. manquant":"Requalifier les fiches en anomalie, rappeler les règles de création sous X3 et contrôler chaque semaine les collaborateurs concernés.",
+  "Email manquant":"Requalifier les fiches en anomalie, rappeler les règles de création sous X3 et contrôler chaque semaine les collaborateurs concernés.",
+  "Déblocage C&C":"Organiser la veille C&C : contrôle boîte mail et commandes X3, déblocage rapide et information client sous 6 h ouvrées.",
+  "Réponse C&C":"Organiser la veille C&C : contrôle boîte mail et commandes X3, déblocage rapide et information client sous 6 h ouvrées.",
+  "Emails info C&C":"Organiser la veille C&C : contrôle boîte mail et commandes X3, déblocage rapide et information client sous 6 h ouvrées.",
+  "Traitement DSC":"Distribuer les DSC à relancer chaque semaine, dégager du temps de traitement et suivre l'échéancier jusqu'à clôture.",
+  "Création DSC":"Systématiser la création DSC dès identification d'un sujet client et contrôler quotidiennement les demandes non saisies.",
+  "Propreté":"Reprendre la tenue de la surface de vente avec l'équipe et fixer un contrôle hebdomadaire.",
+  "Extérieur":"Reprendre l'aspect extérieur et les abords, et fixer un contrôle hebdomadaire."
+};
+function actionQs(ind){
+  return ACTIONS_QS[ind] || "Reprendre l'indicateur " + ind + " avec le DM.";
 }
 
 /* garde les lignes dictées et celles que l'utilisateur a modifiées,
@@ -2248,7 +3041,8 @@ function rendrePA(){
         ["", ...(c.options||[])].map(o => "<option" + (o === l[c.k] ? " selected" : "") + ">" + esc(o) + "</option>").join("") + "</select>";
       else ch = "<input type='text' " + attr + " value='" + v + "'>";
       const nomSource = {podium:"enjeu Podium", oss:"OSS", analyse:"analyse chiffrée",
-                         coc:"COC qualité de service", dictee:"dicté"}[l.source];
+                         qs:"bilan qualité de service", coc:"COC qualité de service",
+                         dictee:"dicté"}[l.source];
       const marque = (c.k === CADRE.champs[0].k && nomSource)
         ? "<span class='origine'>" + nomSource + "</span>" : "";
       return "<td>" + ch + marque + "</td>";
@@ -2567,32 +3361,100 @@ function majuscule(s){ return s ? s.charAt(0).toUpperCase() + s.slice(1) : s; }
 /* ===== restitution selon la trame ===== */
 function compterMots(t){ return String(t||"").trim().split(/\s+/).filter(Boolean).length; }
 
-function phrasesConstat(){
+/* ===== constats : ce qui a été observé ou mesuré, positifs d'abord ===== */
+const POSITIFS_MAX = 5;
+
+function constatsPositifs(){
   const p = [];
-  if(E.impressionSV) p.push("Impression générale de la surface de vente : " + E.impressionSV.toLowerCase() + ".");
+  // points de contrôle conformes, sur les blocs renseignés
+  BLOCS.forEach(b => {
+    const renseignes = b.points.filter(x => E.controles[b.k + "|" + x]);
+    const ok = b.points.filter(x => E.controles[b.k + "|" + x] === "OK");
+    if(renseignes.length >= 3 && ok.length === renseignes.length)
+      p.push(b.titre + " : l'ensemble des points contrôlés est conforme.");
+  });
+  // bilan qualité
+  const q = qsDuMagasin();
+  if(q){
+    const verts = QS_INDICATEURS.filter(n => (q.indicateurs[n] || {}).statut === "OK");
+    if(verts.length) p.push(verts.length + " indicateurs de qualité de service sur " +
+      QS_INDICATEURS.length + " sont dans l'objectif" +
+      (verts.length >= 6 ? ", dont " + verts.slice(0,4).join(", ") : "") + ".");
+    const redresse = QS_INDICATEURS.filter(n => {
+      const v = q.indicateurs[n] || {};
+      return (v.statut === "P" || v.statut === "V") && v.evolution === "hausse";
+    });
+    if(redresse.length) p.push("En redressement par rapport au trimestre précédent : " +
+      redresse.join(", ") + ".");
+  }
+  // chiffres au-dessus de la prévision ou de N-1
+  const g = (b,k,c2) => (b && b[k]) ? b[k][c2] : null;
+  const eP = ecart(g(E.mois,"ca","real"), g(E.mois,"ca","prev"));
+  const eN = ecart(g(E.mois,"ca","real"), g(E.mois,"ca","n1"));
+  if(eP !== null && eP >= S_VIGIL) p.push("CA du mois au-dessus de la prévision de " + fmtAbs(eP) + ".");
+  if(eN !== null && eN >= S_VIGIL) p.push("CA du mois en progression de " + fmtAbs(eN) + " sur N-1.");
+  // position réseau
+  const pr = positionReseau("acc");
+  if(pr && pr.ecartReseau !== null && pr.ecartReseau > 0)
+    p.push("Le magasin fait " + fmtAbs(pr.ecartReseau) + " de mieux que le réseau" +
+           (pr.rang ? ", " + ordinal(pr.rang) + " sur " + pr.nb : "") + ".");
+  // collaborateurs en progression
+  const vend = (E.vendeurs.mois || []).filter(v => v.ca && v.ca.n1 && ecart(v.ca.real, v.ca.n1) >= 0.05);
+  if(vend.length) p.push("En progression sur N-1 : " +
+    vend.map(v => nomCourt(v.nom) + " " + fmtEcart(ecart(v.ca.real, v.ca.n1))).join(", ") + ".");
+  // points forts au Podium
+  (E._croise || []).forEach(c2 => {
+    const forts = c2.familles.filter(f2 => f2.rang !== null && c2.rangTot !== null &&
+                                           c2.rangTot - f2.rang >= ECART_RANG_MINI);
+    if(forts.length) p.push(c2.nom + " est nettement mieux classé que son niveau global sur " +
+      forts.map(f2 => f2.nom).join(", ") + ".");
+  });
+  // on ne racle pas les fonds de tiroir : quelques constats solides valent mieux
+  return p.slice(0, POSITIFS_MAX);
+}
+
+function constatsEcarts(){
+  const p = [];
+  if(E.impressionSV && E.impressionSV !== "Propre")
+    p.push("Impression générale de la surface de vente : " + E.impressionSV.toLowerCase() + ".");
   BLOCS.forEach(b => {
     const ko = b.points.filter(x => E.controles[b.k + "|" + x] === "KO");
-    const nc = b.points.filter(x => E.controles[b.k + "|" + x] === "NC");
     const ar = b.points.filter(x => E.controles[b.k + "|" + x] === "A revoir");
+    const nc = b.points.filter(x => E.controles[b.k + "|" + x] === "NC");
     if(ko.length) p.push(b.titre + " : " + ko.join(", ") + " non conforme" + (ko.length>1?"s":"") + ".");
     if(ar.length) p.push(b.titre + " : " + ar.join(", ") + " à revoir.");
     if(nc.length) p.push(b.titre + " : " + nc.join(", ") + " non contrôlé" + (nc.length>1?"s":"") + ".");
     const z = (E.zones[b.k] || "").trim();
     if(z) p.push(z);
   });
+  const q = qsDuMagasin();
+  if(q){
+    const hors = QS_INDICATEURS.filter(n => {
+      const s = (q.indicateurs[n] || {}).statut;
+      return s === "P" || s === "V";
+    });
+    if(hors.length) p.push("Qualité de service, indicateurs hors objectif : " +
+      hors.map(n => n + " " + (q.indicateurs[n].valeur || "")).join(" · ") + ".");
+  }
   E.echanges.forEach(e => p.push(e.qui + " : " + e.texte));
   return p;
 }
 
+function phrasesConstat(){ return constatsPositifs().concat(constatsEcarts()); }
+
 function phrasesAnalyse(){
   const liste = (E._constats || []);
   const p = [];
-  // les enjeux Podium et OSS ouvrent l'analyse
   liste.filter(x => x.epingle).forEach(x => p.push(x.titre + " — " + x.detail));
   liste.filter(x => !x.epingle && (x.niveau === "alerte" || x.niveau === "vigilance"))
        .forEach(x => p.push(x.titre + " — " + x.detail));
-  const positifs = liste.filter(x => x.niveau === "favorable");
-  if(positifs.length) p.push("Points favorables : " + positifs.map(x => x.titre.toLowerCase()).join(", ") + ".");
+  // l'atterrissage, chiffré, mérite sa phrase même s'il ne déclenche aucune alerte
+  [["acc","Accessoires"],["presta","Prestation"]].forEach(([t,lib]) => {
+    const a = atterrissage(t);
+    if(a.prev !== null && a.reste !== null)
+      p.push(lib + " — prévision " + fmt(a.prev,"eur") + ", atterrissage " + fmt(a.atterrissage,"eur") +
+             ", reste à faire " + fmt(a.reste,"eur") + ".");
+  });
   return p;
 }
 
@@ -2617,12 +3479,14 @@ function composerRestitution(){
   L.push("");
   L.push("Voici la restitution de la journée de visite" + (dateFr ? " du " + dateFr : "") + " sur " + mag + ".");
   const enTete = (E._constats || []).filter(x => x.epingle).map(x => x.titre);
-  if(enTete.length) L.push("Les deux axes de cette visite : " + enTete.join(" · ") + ".");
+  if(enTete.length) L.push("Les axes de cette visite : " + enTete.join(" · ") + ".");
   L.push("");
 
   L.push("CONSTAT");
-  const cst = phrasesConstat();
-  L.push(cst.length ? cst.join(" ") : "À compléter : impression de surface de vente, points de contrôle, échanges avec les interlocuteurs du site.");
+  const pos = constatsPositifs(), ecarts = constatsEcarts();
+  if(pos.length){ L.push("Ce qui tient. " + pos.join(" ")); L.push(""); }
+  if(ecarts.length) L.push("Ce qui est à reprendre. " + ecarts.join(" "));
+  else if(!pos.length) L.push("À compléter : points de contrôle, échanges avec les interlocuteurs du site.");
   L.push("");
 
   L.push("ANALYSE");
@@ -2630,23 +3494,18 @@ function composerRestitution(){
   L.push(ana.length ? ana.join(" ") : "À compléter : importez les fichiers pour alimenter l'analyse.");
   L.push("");
 
-  L.push("PRÉCONISATIONS / PLAN D'ACTION SUR LES DEUX MOIS");
+  L.push("PLAN D'ACTION SUR LES DEUX MOIS");
   const prec = preconisations();
   if(prec.length){
     prec.forEach(l => {
-      const bouts = [l.action || l.constat];
-      if(l.responsable) bouts.push("responsable " + l.responsable);
-      if(l.echeance) bouts.push("échéance " + new Date(l.echeance).toLocaleDateString("fr-FR"));
-      if(l.indicateur) bouts.push("suivi par " + l.indicateur);
-      L.push("- " + bouts.join(", ") + ".");
+      const q = [];
+      if(l.responsable) q.push(l.responsable);
+      if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
+      if(l.indicateur) q.push(l.indicateur);
+      L.push("- " + (l.action || l.constat).replace(/\.$/, "") +
+             (q.length ? " (" + q.join(", ") + ")" : "") + ".");
     });
   } else L.push("- À compléter.");
-  L.push("");
-
-  L.push("TROIS PRIORITÉS");
-  const prio = troisPriorites();
-  if(prio.length) prio.forEach((l,i) => L.push((i+1) + ". " + (l.constat ? l.constat + " : " : "") + (l.action || "")));
-  else L.push("1. À définir.");
   L.push("");
   L.push("Je reste disponible pour en échanger.");
 
@@ -3378,16 +4237,24 @@ async function exporterFDRPdf(){
 }
 
 /* ===== démarrage ===== */
-function demarrer(){
+function demarrerAppli(){
   const sel = document.getElementById("magasin");
   sel.innerHTML = "<option value=''>Choisir un magasin</option>" +
     MAGASINS.map(m => "<option>" + esc(m) + "</option>").join("");
-  sel.onchange = () => { E.magasin = sel.value; sauver(); };
+  sel.onchange = () => {
+    E.magasin = sel.value;
+    reprendreReseau(); reprendreTsm(); completerCalculs();
+    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreAnalyse();
+    sauver();
+  };
 
   const dv = document.getElementById("dateVisite");
   dv.value = new Date().toISOString().slice(0,10);
   E.date = dv.value;
-  dv.onchange = () => { E.date = dv.value; sauver(); };
+  dv.onchange = () => {
+    E.date = dv.value; reprendreTsm(); completerCalculs();
+    rendrePerfs(); rendreAtterrissage(); rendreAnalyse(); sauver();
+  };
 
   document.getElementById("dictee").onchange = e => { E.dictee = e.target.value; sauver(); };
   const inter = document.getElementById("interlocuteur");
@@ -3405,13 +4272,27 @@ function demarrer(){
   rendreSources();
   rendrePerfs();
   rendreCollab();
+  rendreAtterrissage();
+  rendreQs();
   rendrePA();
   rendreFDR();
   charger().then(() => {
-    rendreSources(); rendrePerfs(); rendreCollab(); rendrePA(); rendreAnalyse(); majJauge();
+    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs();
+    rendrePA(); rendreAnalyse(); majJauge();
   });
 }
-demarrer();
+/* l'appli ne démarre qu'une fois le code validé */
+if(ACCES.actif){
+  document.body.classList.add("bloque");
+  ouvrirVerrou();
+} else {
+  document.getElementById("verrou").hidden = true;
+  demarrerAppli();
+}
+
+// toute activité repousse le verrouillage automatique
+["click","keydown","input","touchstart"].forEach(ev =>
+  document.addEventListener(ev, relancerVerrou, {passive:true}));
 
 /* enregistrement du service worker : installation sur l'écran d'accueil et
    fonctionnement hors ligne. Sans lui, l'appli marche quand même. */
