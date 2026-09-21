@@ -2,7 +2,6 @@
   "name": "CRV — Compte rendu de visite",
   "short_name": "CRV",
   "description": "Compte rendu de visite magasin : chiffres, analyse, plan d'action, restitution.",
-  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
