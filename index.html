@@ -1313,7 +1313,17 @@ async function deverrouiller(){
 function ouvrirVerrou(){
   // le jeton d'URL filtre avant même de demander le code
   if(ACCES.jeton){
-    const k = new URLSearchParams(location.search).get("k");
+    // L'appli installée ou rouverte depuis l'historique repart de l'adresse nue :
+    // le jeton, vérifié une fois sur cet appareil, est retenu.
+    let k = new URLSearchParams(location.search).get("k");
+    let retenu = null;
+    try{ retenu = localStorage.getItem("crv:jeton"); }catch(e){}
+    if(k === ACCES.jeton){
+      try{ localStorage.setItem("crv:jeton", k); }catch(e){}
+    } else if(!k && retenu === ACCES.jeton){
+      k = retenu;
+      try{ history.replaceState(null, "", location.pathname + "?k=" + k + location.hash); }catch(e){}
+    }
     if(k !== ACCES.jeton){
       document.getElementById("blocCode").innerHTML =
         "<p class='msgErr'>Lien invalide. Utilisez l'adresse complète qui vous a été communiquée, " +
