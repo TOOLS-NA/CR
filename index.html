@@ -226,6 +226,33 @@ h2{justify-content:flex-start}
 }
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* ═══ Aperçu coloré de la restitution ═══ */
+.apercu-titre{
+  margin-top:14px; font-size:11px; text-transform:uppercase; letter-spacing:0.5px;
+  color:var(--gris); font-weight:600;
+}
+.apercu-restitution{
+  margin-top:6px; padding:8px; background:var(--fond); border-radius:var(--r);
+  border:1px solid var(--trait); font-size:13px; line-height:1.5;
+  max-height:400px; overflow-y:auto;
+}
+.apercu-restitution p{margin:0 0 8px 0}
+.apercu-restitution .bloc-positif{
+  background:#E8F5E9; border-left:4px solid var(--vert);
+  padding:8px 10px; border-radius:3px;
+  color:#1B5E20;
+}
+.apercu-restitution .bloc-a-travailler{
+  background:#FFF3E0; border-left:4px solid var(--ambre);
+  padding:8px 10px; border-radius:3px;
+  color:#7A4A0F;
+}
+.apercu-restitution .titre-section{
+  font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
+  font-size:11px; color:var(--navy); margin-top:12px;
+}
+@media print{.apercu-titre,.apercu-restitution{display:none}}
+
 /* ═══ Panneau "Mes CR" ═══ */
 .mesCR_overlay{
   display:none; position:fixed; inset:0; z-index:1000;
@@ -507,7 +534,9 @@ h2{justify-content:flex-start}
     <button class="btn" onclick="composerRestitution()">Composer la restitution</button>
     <span class="etat" id="motsRestitution"></span>
   </div>
-  <textarea id="restitution" style="min-height:320px" oninput="majMots()" onchange="E.restitution=this.value;sauver()"></textarea>
+  <textarea id="restitution" style="min-height:320px" oninput="majMots();majApercuRestitution()" onchange="E.restitution=this.value;sauver();majApercuRestitution()"></textarea>
+  <div class="apercu-titre">Aperçu coloré</div>
+  <div id="apercuRestitution" class="apercu-restitution"></div>
 </section>
 
 <section class="pilote">
@@ -4017,7 +4046,41 @@ function composerRestitution(){
   E.restitution = texte;
   document.getElementById("restitution").value = texte;
   majMots();
+  majApercuRestitution();
   sauver();
+}
+
+/* Aperçu HTML coloré de la restitution.
+   Points positifs (Ce qui tient…) en vert, points à travailler (Ce qui est
+   à reprendre…) en orange. L'aperçu suit la saisie en temps réel. */
+function majApercuRestitution(){
+  const div = document.getElementById("apercuRestitution");
+  if(!div) return;
+  const texte = (document.getElementById("restitution") || {}).value || "";
+  if(!texte.trim()){
+    div.innerHTML = '<p style="color:#6B7A88;font-style:italic;margin:4px 0">La restitution s\'affichera ici avec les points positifs en vert et les points à travailler en orange.</p>';
+    return;
+  }
+  // Découper par paragraphes non vides
+  const paras = texte.split(/\n+/).filter(p => p.trim());
+  const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  const html = paras.map(p => {
+    const trim = p.trim();
+    // Titres de section (CONSTAT / ANALYSE / PLAN D'ACTION…)
+    if(/^[A-ZÀ-Ÿ][A-ZÀ-Ÿ\s'']{3,}$/.test(trim) && trim.length < 60){
+      return '<p class="titre-section">' + esc(trim) + '</p>';
+    }
+    // Points positifs
+    if(/^Ce qui tient\b/i.test(trim)){
+      return '<p class="bloc-positif">' + esc(trim) + '</p>';
+    }
+    // Points à travailler
+    if(/^Ce qui est à reprendre\b/i.test(trim)){
+      return '<p class="bloc-a-travailler">' + esc(trim) + '</p>';
+    }
+    return '<p>' + esc(trim) + '</p>';
+  }).join("");
+  div.innerHTML = html;
 }
 
 function majMots(){
@@ -4028,86 +4091,176 @@ function majMots(){
 }
 
 /* ===== synthèse de visite : mail court, tendance et priorités ===== */
-function phrasesTendance(){
-  const p = [];
+/* ═══════════════════════════════════════════════════════════════
+   Synthèse structurée en 3 sections claires :
+     1. Volume et potentiel réseau (pivot le plus important)
+     2. Atterrissage du mois (ACC + Presta séparés)
+     3. Qualité et BDD
+   Chaque section renvoie ses phrases séparément pour un affichage clair.
+   ═══════════════════════════════════════════════════════════════ */
+function sectionsSynthese(){
   const A = E.mois, S = E.saison;
   const g = (b,k,c) => (b && b[k]) ? b[k][c] : null;
+
+  // ═══ 1. VOLUME ET POTENTIEL RÉSEAU (pivot) ═══
+  const s1 = [];
   const eMoisN1 = ecart(g(A,"ca","real"), g(A,"ca","n1"));
   const eMoisPrev = ecart(g(A,"ca","real"), g(A,"ca","prev"));
   const eSaisonN1 = ecart(g(S,"ca","real"), g(S,"ca","n1"));
 
+  // Potentiel réseau en tête (le pivot le plus important selon le pilote)
+  const enjeu = (E._croise || []).reduce((n,c) => n + c.enjeuPrio, 0);
+  if(enjeu >= ENJEU_MINI){
+    s1.push("Le classement Podium situe un potentiel de " + fmt(enjeu*1000, "eur") +
+            " sur les familles prioritaires, à aller chercher avec l'équipe.");
+  }
+  // CA du mois
   if(g(A,"ca","real") !== null){
     let t = "Sur le mois, le CA ressort à " + fmt(g(A,"ca","real"), "eur");
     if(eMoisN1 !== null) t += ", " + (eMoisN1 >= 0 ? "en progression de " + fmtAbs(eMoisN1) : "en retrait de " + fmtAbs(eMoisN1)) + " sur N-1";
     if(eMoisPrev !== null) t += ", " + (eMoisPrev >= 0
       ? "au-dessus de la prévision de " + fmtAbs(eMoisPrev)
       : "en retrait de " + fmtAbs(eMoisPrev) + " sur la prévision");
-    p.push(t + ".");
+    s1.push(t + ".");
   }
+  // Tendance saison
   if(eSaisonN1 !== null && eMoisN1 !== null){
     if(eMoisN1 < -S_VIGIL && eSaisonN1 >= -S_VIGIL)
-      p.push("La saison reste bien orientée à " + fmtEcart(eSaisonN1) + " : le retrait du mois est récent, donc rattrapable.");
+      s1.push("La saison reste bien orientée à " + fmtEcart(eSaisonN1) + " : le retrait du mois est récent, donc rattrapable.");
     else if(eMoisN1 >= S_VIGIL && eSaisonN1 < -S_VIGIL)
-      p.push("Le mois marque un point d'inflexion : la saison était à " + fmtEcart(eSaisonN1) + ", la dynamique repart.");
+      s1.push("Le mois marque un point d'inflexion : la saison était à " + fmtEcart(eSaisonN1) + ", la dynamique repart.");
     else
-      p.push("Sur la saison à date, la tendance est à " + fmtEcart(eSaisonN1) + ".");
+      s1.push("Sur la saison à date, la tendance est à " + fmtEcart(eSaisonN1) + ".");
   }
-
-  const enjeu = (E._croise || []).reduce((n,c) => n + c.enjeuPrio, 0);
-  if(enjeu >= ENJEU_MINI)
-    p.unshift("Le classement Podium situe un potentiel de " + fmt(enjeu*1000, "eur") +
-              " sur les familles prioritaires, à aller chercher avec l'équipe.");
-
+  // Prise de commande (OSS)
   const couv = g2(E.oss || {}, "ossPrev", "n");
   const trans = g2(E.oss || {}, "signeOss", "n");
   if(couv !== null || trans !== null){
     const b2 = [];
     if(trans !== null) b2.push("transformation à " + fmt(trans,"pct"));
     if(couv !== null) b2.push("carnet couvrant " + fmt(couv,"pct") + " de la prévision");
-    p.splice(1, 0, "Côté prise de commande, " + b2.join(" et ") + ".");
+    s1.push("Côté prise de commande, " + b2.join(" et ") + ".");
   }
 
+  // ═══ 2. ATTERRISSAGE ACC ET PRESTA ═══
+  const s2 = [];
+  try {
+    const attAcc = atterrissage("acc");
+    if(attAcc.prev !== null && attAcc.atterrissage !== null){
+      let t = "Accessoires — prévision " + fmt(attAcc.prev, "eur");
+      t += ", atterrissage " + fmt(attAcc.atterrissage, "eur");
+      if(attAcc.reste !== null) t += ", reste à faire " + fmt(attAcc.reste, "eur");
+      s2.push(t + ".");
+    }
+    const attPresta = atterrissage("presta");
+    if(attPresta.prev !== null && attPresta.atterrissage !== null){
+      let t = "Prestation — prévision " + fmt(attPresta.prev, "eur");
+      t += ", atterrissage " + fmt(attPresta.atterrissage, "eur");
+      if(attPresta.reste !== null) t += ", reste à faire " + fmt(attPresta.reste, "eur");
+      s2.push(t + ".");
+    }
+  } catch(e){ /* prev manquantes */ }
+
+  // ═══ 3. QUALITÉ ET BDD ═══
+  const s3 = [];
+  try {
+    const q = qsDuMagasin();
+    if(q){
+      const prio = QS_INDICATEURS.filter(n => (q.indicateurs[n] || {}).statut === "P");
+      const vig  = QS_INDICATEURS.filter(n => (q.indicateurs[n] || {}).statut === "V");
+      const verts = QS_INDICATEURS.filter(n => (q.indicateurs[n] || {}).statut === "OK");
+      if(verts.length) s3.push(verts.length + " indicateurs de qualité de service sur " +
+        QS_INDICATEURS.length + " sont dans l'objectif.");
+      // Concentrer sur BDD et indicateurs prioritaires
+      const bdd = prio.concat(vig).filter(n => /BDD/i.test(n));
+      if(bdd.length) s3.push("BDD à requalifier : " + bdd.join(", ") + ".");
+      if(prio.length) s3.push(prio.length + " indicateur" + (prio.length > 1 ? "s" : "") +
+        " en priorité : " + prio.slice(0,3).join(", ") + ".");
+    }
+  } catch(e){ /* qs manquant */ }
+
+  // Points forts (bonus, mis à la fin)
   const forts = (E._constats || []).filter(x => x.niveau === "favorable").slice(0,2);
-  if(forts.length)
-    p.push("À souligner : " + forts.map(x => x.titre).join(", ") + ".");
-  return p;
+  if(forts.length) s3.push("À souligner : " + forts.map(x => x.titre).join(", ") + ".");
+
+  return { caPotentiel: s1, atterrissage: s2, qualite: s3 };
+}
+
+/* Compatibilité : phrasesTendance() renvoie encore un array plat (usages externes) */
+function phrasesTendance(){
+  const sec = sectionsSynthese();
+  return sec.caPotentiel.concat(sec.atterrissage).concat(sec.qualite);
 }
 
 function composerSynthese(){
   const mag = E.magasin || "le magasin";
   const dateFr = E.date ? new Date(E.date).toLocaleDateString("fr-FR") : "";
-  const L = [];
-  L.push("Objet : Synthèse de visite — " + mag + (dateFr ? " du " + dateFr : ""));
-  L.push("");
-  L.push("Bonjour,");
-  L.push("");
-  L.push("Merci pour l'accueil et la disponibilité de l'équipe" + (dateFr ? " lors de la visite du " + dateFr : "") + ".");
-  L.push("");
 
-  const tend = phrasesTendance();
-  L.push(tend.length ? tend.join(" ") : "Tendance à compléter une fois les chiffres intégrés.");
-  L.push("");
+  // Générer les sections structurées
+  const sec = sectionsSynthese();
 
-  L.push("Trois priorités pour le mois à venir :");
-  const prio = troisPriorites();
-  if(prio.length)
-    prio.forEach((l,i) => L.push((i+1) + ". " + (l.action || l.constat || "à définir") +
-      (l.responsable ? " — " + l.responsable : "") +
-      (l.echeance ? ", pour le " + new Date(l.echeance).toLocaleDateString("fr-FR") : "")));
-  else
-    L.push("1. À définir avec le DM.");
-  L.push("");
+  // Construction du corps avec sections clairement séparées
+  const construire = (s) => {
+    const L = [];
+    L.push("Objet : Synthèse de visite — " + mag + (dateFr ? " du " + dateFr : ""));
+    L.push("");
+    L.push("Bonjour,");
+    L.push("");
+    L.push("Merci pour l'accueil et la disponibilité de l'équipe" + (dateFr ? " lors de la visite du " + dateFr : "") + ".");
+    L.push("");
 
-  L.push("Ces trois chantiers sont à la portée de l'équipe et se suivent simplement. Je repasse le mois prochain pour faire le point ensemble.");
-  L.push("");
-  L.push("Bonne continuation à tous.");
+    // Section 1 : CA / Potentiel réseau (pivot)
+    if(s.caPotentiel.length){
+      L.push("CA et potentiel réseau");
+      L.push(s.caPotentiel.join(" "));
+      L.push("");
+    }
 
-  let texte = L.join("\n");
-  // le format impose 300 mots : on retire d'abord les phrases de tendance secondaires
-  while(compterMots(texte) > CADRE.motsMaxSynthese && tend.length > 1){
-    tend.pop();
-    L[6] = tend.join(" ");
-    texte = L.join("\n");
+    // Section 2 : Atterrissage ACC et Presta
+    if(s.atterrissage.length){
+      L.push("Atterrissage du mois");
+      s.atterrissage.forEach(t => L.push(t));
+      L.push("");
+    }
+
+    // Section 3 : Qualité et BDD
+    if(s.qualite.length){
+      L.push("Qualité et BDD");
+      L.push(s.qualite.join(" "));
+      L.push("");
+    }
+
+    // Si aucune section, tendance à compléter
+    if(!s.caPotentiel.length && !s.atterrissage.length && !s.qualite.length){
+      L.push("Tendance à compléter une fois les chiffres intégrés.");
+      L.push("");
+    }
+
+    L.push("Trois priorités pour le mois à venir :");
+    const prio = troisPriorites();
+    if(prio.length)
+      prio.forEach((l,i) => L.push((i+1) + ". " + (l.action || l.constat || "à définir") +
+        (l.responsable ? " — " + l.responsable : "") +
+        (l.echeance ? ", pour le " + new Date(l.echeance).toLocaleDateString("fr-FR") : "")));
+    else
+      L.push("1. À définir avec le DM.");
+    L.push("");
+
+    L.push("Ces trois chantiers sont à la portée de l'équipe et se suivent simplement. Je repasse le mois prochain pour faire le point ensemble.");
+    L.push("");
+    L.push("Bonne continuation à tous.");
+    return L.join("\n");
+  };
+
+  let texte = construire(sec);
+  // Contrainte 300 mots : on trime les sections en partant de la moins prioritaire (qualité, puis atterrissage)
+  const secTrim = { caPotentiel: [...sec.caPotentiel], atterrissage: [...sec.atterrissage], qualite: [...sec.qualite] };
+  while(compterMots(texte) > CADRE.motsMaxSynthese){
+    if(secTrim.qualite.length > 1) secTrim.qualite.pop();
+    else if(secTrim.atterrissage.length > 1) secTrim.atterrissage.pop();
+    else if(secTrim.caPotentiel.length > 1) secTrim.caPotentiel.pop();
+    else break;  // on ne peut plus réduire sans casser
+    texte = construire(secTrim);
   }
 
   E.synthese = texte;
@@ -4278,7 +4431,44 @@ async function exporterPDF(){
     }
 
     // la synthèse part par mail, elle n'a pas sa place dans l'export
-    if(E.restitution){ doc.addPage(); y = M; titre("Restitution"); para(E.restitution); }
+    if(E.restitution){
+      doc.addPage(); y = M; titre("Restitution");
+      // Rendu coloré : points positifs (vert) / points à travailler (orange)
+      const paragraphes = E.restitution.split(/\n+/).filter(p => p.trim());
+      const largeurBloc = L;  // largeur utile
+      paragraphes.forEach(p => {
+        const trim = p.trim();
+        // Détection du type de paragraphe
+        let couleurFond = null, couleurTexte = [30,34,46], bold = false;
+        if(/^Ce qui tient\b/i.test(trim)){
+          couleurFond = [232,245,233]; couleurTexte = [27,94,32];
+        } else if(/^Ce qui est à reprendre\b/i.test(trim)){
+          couleurFond = [255,243,224]; couleurTexte = [122,74,15];
+        } else if(/^[A-ZÀ-Ÿ][A-ZÀ-Ÿ\s'']{3,}$/.test(trim) && trim.length < 60){
+          bold = true; couleurTexte = [14,44,73];
+        }
+        // Découpe multi-lignes
+        doc.setFont("helvetica", bold ? "bold" : "normal");
+        doc.setFontSize(9.5);
+        const lignes = doc.splitTextToSize(net(trim), largeurBloc - (couleurFond ? 6 : 0));
+        const hauteur = lignes.length * 4.6 + (couleurFond ? 4 : 0);
+        saut(hauteur + 2);
+        if(couleurFond){
+          doc.setFillColor(couleurFond[0], couleurFond[1], couleurFond[2]);
+          doc.rect(M, y - 4, largeurBloc, hauteur, "F");
+          // barre gauche
+          const barre = couleurFond[0] === 232 ? [28,156,115] : [224,138,46];
+          doc.setFillColor(barre[0], barre[1], barre[2]);
+          doc.rect(M, y - 4, 1.2, hauteur, "F");
+        }
+        doc.setTextColor(couleurTexte[0], couleurTexte[1], couleurTexte[2]);
+        const decalX = couleurFond ? 4 : 0;
+        lignes.forEach(l => { doc.text(l, M + decalX, y); y += 4.6; });
+        y += couleurFond ? 3 : 1.5;
+      });
+      doc.setTextColor(30,34,46);
+      doc.setFont("helvetica","normal");
+    }
 
     // pied de page
     const total = doc.internal.getNumberOfPages();
@@ -4320,6 +4510,7 @@ async function charger(){
     document.getElementById("restitution").value = E.restitution || "";
     if(E.interlocuteur) document.getElementById("interlocuteur").value = E.interlocuteur;
     majMots();
+    majApercuRestitution();
     BLOCS.forEach(b => {
       const t = document.getElementById("z_" + b.k);
       if(t) t.value = E.zones[b.k] || "";
@@ -4480,6 +4671,7 @@ function appliquerCR(paquet){
   const r = document.getElementById("restitution"); if(r) r.value = E.restitution || "";
   const i = document.getElementById("interlocuteur"); if(i && E.interlocuteur) i.value = E.interlocuteur;
   majMots && majMots();
+  majApercuRestitution && majApercuRestitution();
   BLOCS.forEach(b => {
     const t = document.getElementById("z_" + b.k);
     if(t) t.value = (E.zones && E.zones[b.k]) || "";
