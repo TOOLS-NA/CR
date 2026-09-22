@@ -3375,7 +3375,7 @@ function majZone(el, k){ E.zones[k] = el.value; sauver(); }
    Ordre : enjeux chiffrés du Podium, puis OSS, puis le reste de l'analyse,
    puis le COC, puis ce qui a été dicté. Les enjeux passent devant
    parce qu'ils sont chiffrés. */
-const ORDRE_SOURCE = {podium:0, oss:1, analyse:2, qs:3, coc:4, dictee:5, manuel:6};
+const ORDRE_SOURCE = {potentiel:0, podium:1, oss:2, analyse:3, qs:4, coc:5, dictee:6, manuel:7};
 
 function signaturePA(l){
   return CADRE.champs.map(c => l[c.k] === undefined ? "" : String(l[c.k])).join("|");
@@ -3392,6 +3392,27 @@ function ligneAuto(source, origine, champs){
 
 function lignesAuto(){
   const out = [];
+
+  // 0. Potentiel vs réseau (pivot) — actions structurantes en tête
+  // Se déclenche dès que l'enjeu Podium global est significatif.
+  const enjeuTotal = (E._croise || []).reduce((n,c) => n + c.enjeuPrio, 0);
+  if(enjeuTotal >= ENJEU_MINI){
+    const dm = directeurMagasin() || "DM";
+    const actionsPotentiel = [
+      "Complément de formation produits sur les familles prioritaires",
+      "Suivi hebdo par le DM des vendeurs en écart réseau",
+      "Retravailler l'argumentaire produits (familles prioritaires) en brief équipe",
+      "Renforcer la maîtrise des techniques de vente (accroche, découverte, additionnel)"
+    ];
+    actionsPotentiel.forEach((act, i) => {
+      out.push(ligneAuto("potentiel", "potentiel:reseau:" + i, {
+        constat: "Potentiel de " + fmt(enjeuTotal*1000, "eur") + " à aller chercher sur les familles prioritaires (écart au réseau).",
+        action: act,
+        responsable: dm,
+        indicateur: "Potentiel réseau"
+      }));
+    });
+  }
 
   // 1. enjeux du Podium, du plus gros au plus petit
   const enjeux = [];
@@ -3556,7 +3577,7 @@ function rendrePA(){
       else if(c.type === "liste") ch = "<select " + attr + ">" +
         ["", ...(c.options||[])].map(o => "<option" + (o === l[c.k] ? " selected" : "") + ">" + esc(o) + "</option>").join("") + "</select>";
       else ch = "<input type='text' " + attr + " value='" + v + "'>";
-      const nomSource = {podium:"enjeu Podium", oss:"OSS", analyse:"analyse chiffrée",
+      const nomSource = {potentiel:"potentiel réseau", podium:"enjeu Podium", oss:"OSS", analyse:"analyse chiffrée",
                          qs:"bilan qualité de service", coc:"COC qualité de service",
                          dictee:"dicté"}[l.source];
       const marque = (c.k === CADRE.champs[0].k && nomSource)
@@ -4030,13 +4051,28 @@ function composerRestitution(){
   L.push("PLAN D'ACTION SUR LES DEUX MOIS");
   const prec = preconisations();
   if(prec.length){
+    // Grouper par indicateur pour meilleure lisibilité
+    const groupes = {};
+    const ordreThemes = [];  // conserve l'ordre d'apparition
     prec.forEach(l => {
-      const q = [];
-      if(l.responsable) q.push(l.responsable);
-      if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
-      if(l.indicateur) q.push(l.indicateur);
-      L.push("- " + (l.action || l.constat).replace(/\.$/, "") +
-             (q.length ? " (" + q.join(", ") + ")" : "") + ".");
+      const theme = (l.indicateur || "Actions générales").trim() || "Actions générales";
+      if(!groupes[theme]){ groupes[theme] = []; ordreThemes.push(theme); }
+      groupes[theme].push(l);
+    });
+    // Mettre "Actions générales" à la fin si présent
+    const idx = ordreThemes.indexOf("Actions générales");
+    if(idx > -1){ ordreThemes.splice(idx, 1); ordreThemes.push("Actions générales"); }
+
+    ordreThemes.forEach(theme => {
+      L.push("");
+      L.push(theme);
+      groupes[theme].forEach(l => {
+        const q = [];
+        if(l.responsable) q.push(l.responsable);
+        if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
+        L.push("- " + (l.action || l.constat).replace(/\.$/, "") +
+               (q.length ? " (" + q.join(", ") + ")" : "") + ".");
+      });
     });
   } else L.push("- À compléter.");
   L.push("");
