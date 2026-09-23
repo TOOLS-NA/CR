@@ -1569,9 +1569,10 @@ const memo = {
   async ecrire(k,v){
     try{
       const charge = this.cle ? await chiffrer(v, this.cle) : v;
-      if(window.storage){ await window.storage.set(k, charge); return; }
+      if(window.storage){ await window.storage.set(k, charge); return true; }
       localStorage.setItem(k, charge);
-    }catch(e){}
+      return true;
+    }catch(e){ return false; }    // mémoire du navigateur pleine, par exemple
   }
 };
 
@@ -4810,8 +4811,20 @@ function exportJSON(){
 const ARCHIVES_MAX = 5;
 const CLE_ARCHIVES = "crv:archives";
 
+/* Les fichiers importés (bilan qualité des 36 magasins, export réseau, classement
+   Podium national) pèsent l'essentiel de l'état et se réimportent en un clic :
+   l'archive du navigateur ne garde que le travail de la visite. */
+const ETAT_NON_ARCHIVE = ["qs","reseau","gmdr","tsm"];
+function etatAllege(etat){
+  const leger = Object.assign({}, etat);
+  ETAT_NON_ARCHIVE.forEach(k => { delete leger[k]; });
+  leger.allege = true;
+  return leger;
+}
+
 async function archiverCR(paquet){
   const cle = (paquet.magasin || "sans").split("-")[0] + "_" + (paquet.date || "sans-date");
+  paquet = Object.assign({}, paquet, {etat: etatAllege(paquet.etat)});
   // Lire l'index actuel
   let index = [];
   try{
@@ -4834,8 +4847,15 @@ async function archiverCR(paquet){
     try{ await memo.ecrire("crv:cr:" + vieux.cle, ""); }catch(e){}
     try{ localStorage.removeItem("crv:cr:" + vieux.cle); }catch(e){}
   }
+  // le CR d'abord : sans lui, la ligne dans « Mes CR » n'ouvrirait rien
+  const ok = await memo.ecrire("crv:cr:" + cle, JSON.stringify(paquet));
+  if(!ok || !(await memo.lire("crv:cr:" + cle))){
+    alert("Ce CR n'a pas pu être archivé dans le navigateur (mémoire pleine).\n" +
+          "Le fichier .json vient d'être téléchargé : c'est lui qui fait foi, " +
+          "le bouton « Ouvrir » du bandeau permet de le recharger.");
+    return;
+  }
   await memo.ecrire(CLE_ARCHIVES, JSON.stringify(index));
-  await memo.ecrire("crv:cr:" + cle, JSON.stringify(paquet));
 }
 
 async function listerArchives(){
@@ -4866,9 +4886,12 @@ function appliquerCR(paquet){
     alert("Fichier invalide : ce n'est pas un CR de visite exporté depuis cette app.");
     return false;
   }
+  // le bilan qualité et les exports réseau valent pour la quinzaine : on les garde
+  const garde = {}; ETAT_NON_ARCHIVE.forEach(k => { garde[k] = E[k]; });
   // Ré-initialiser E avec l'état importé
   Object.keys(E).forEach(k => delete E[k]);
   Object.assign(E, paquet.etat);
+  ETAT_NON_ARCHIVE.forEach(k => { if(E[k] === undefined && garde[k] !== undefined) E[k] = garde[k]; });
   // Rafraîchir tous les champs visibles
   document.getElementById("magasin").value = E.magasin || "";
   document.getElementById("dateVisite").value = E.date || "";
@@ -4886,11 +4909,19 @@ function appliquerCR(paquet){
     const t = document.getElementById("z_" + b.k);
     if(t) t.value = (E.zones && E.zones[b.k]) || "";
   });
+  // les manques de l'archive allégée : on repart du TSM préchargé
+  ETAT_NON_ARCHIVE.forEach(k => { if(E[k] === undefined) E[k] = (k === "gmdr") ? {acc:[], presta:[], titre:""}
+    : (k === "reseau") ? {acc:null, presta:null} : (k === "qs") ? {} : null; });
+  if(!E.prevExport) E.prevExport = {};
+  // Redessiner l'écran : sans cela, les tableaux resteraient ceux du CR précédent
+  completerCalculs(); rendreSources(); rendrePerfs(); rendreCollab();
+  rendreAtterrissage(); rendreQs(); rendrePA(); rendreAnalyse(); majJauge();
   // Sauver comme brouillon courant
   memo.ecrire("crv:brouillon", JSON.stringify(E));
-  // Petit toast visuel
   const et = document.getElementById("etat_fdr") || document.getElementById("etat_oss");
-  if(et){ et.className = "etat"; et.textContent = "✓ CR chargé : " + (E.magasin || "") + " · " + (E.date || ""); }
+  if(et){ et.className = "etat ok"; et.textContent = "CR chargé : " + (E.magasin || "") + " · " + (E.date || "") +
+    (paquet.etat.allege ? " — si un tableau est vide, réimportez le fichier concerné." : ""); }
+  if(window.scrollTo) window.scrollTo({top:0, behavior:"smooth"});
   return true;
 }
 
@@ -4938,7 +4969,13 @@ function fermerMesCR(){
 
 async function chargerEtFermer(cle){
   const p = await chargerArchive(cle);
-  if(p && appliquerCR(p)) fermerMesCR();
+  if(!p){
+    alert("Ce CR n'est plus lisible dans ce navigateur : sa fiche existe mais son contenu manque.\n" +
+          "Rechargez-le depuis le fichier .json avec le bouton « Ouvrir » du bandeau.");
+    await supprimerArchive(cle); ouvrirMesCR();
+    return;
+  }
+  if(appliquerCR(p)) fermerMesCR();
 }
 
 async function telechargerArchive(cle){
@@ -5382,7 +5419,9 @@ if("serviceWorker" in navigator && location.protocol === "https:"){
     </div>
     <div class="mesCR_corps" id="mesCR_liste"></div>
     <div class="mesCR_pied">
-      Les 5 derniers CR enregistrés sont conservés dans ce navigateur.
+      Les 5 derniers CR enregistrés sont conservés dans ce navigateur : constats, plan d'action,
+      restitution, synthèse et chiffres saisis. Les fichiers importés (bilan qualité, export réseau,
+      classement Podium) ne sont pas archivés, ils se réimportent en un clic.
       Pour un CR plus ancien, utilise le fichier .json téléchargé lors du clic sur « Enregistrer ».
     </div>
   </div>
