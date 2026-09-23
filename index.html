@@ -100,6 +100,16 @@ textarea,input[type=text],input[type=number],input[type=date],select{
 }
 textarea{resize:vertical;min-height:70px;line-height:1.45}
 textarea:focus,input:focus,select:focus{outline:2px solid var(--bleu);outline-offset:1px;border-color:var(--bleu)}
+.saisieRiche{
+  width:100%;min-height:240px;font:inherit;color:var(--encre);line-height:1.45;
+  border:1px solid var(--trait);border-radius:var(--r);padding:8px 10px;background:#fff;
+  white-space:pre-wrap;overflow-wrap:break-word;
+}
+.saisieRiche:focus{outline:2px solid var(--bleu);outline-offset:1px;border-color:var(--bleu)}
+.barre.couleurs{gap:6px;align-items:center;flex-wrap:wrap}
+.pastille{width:26px;height:26px;border-radius:50%;border:1px solid var(--trait);cursor:pointer;padding:0}
+.pastille:hover{filter:brightness(1.1);transform:scale(1.08)}
+@media print{.barre.couleurs{display:none}}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px}
 
 /* ---------- import ---------- */
@@ -239,14 +249,17 @@ h2{justify-content:flex-start}
 .apercu-restitution p{margin:0 0 8px 0}
 .apercu-restitution .bloc-positif{
   background:#E8F5E9; border-left:4px solid var(--vert);
-  padding:8px 10px; border-radius:3px;
+  padding:10px 12px; border-radius:3px; margin:8px 0;
   color:#1B5E20;
 }
 .apercu-restitution .bloc-a-travailler{
   background:#FFF3E0; border-left:4px solid var(--ambre);
-  padding:8px 10px; border-radius:3px;
+  padding:10px 12px; border-radius:3px; margin:8px 0;
   color:#7A4A0F;
 }
+.apercu-restitution .bloc-intitule{font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:.4px}
+.apercu-restitution .bloc-positif p:last-child,
+.apercu-restitution .bloc-a-travailler p:last-child{margin-bottom:0}
 .apercu-restitution .titre-section{
   font-weight:700; text-transform:uppercase; letter-spacing:0.5px;
   font-size:11px; color:var(--navy); margin-top:12px;
@@ -560,9 +573,20 @@ h2{justify-content:flex-start}
   <p class="sous">Mail court adressé au magasin : tendance générale et trois priorités pour le mois à venir. 300 mots maximum.</p>
   <div class="barre" style="margin-top:0">
     <button class="btn" onclick="composerSynthese()">Composer la synthèse</button>
+    <button class="btn sec" onclick="copierSynthese(this)">Copier pour le mail</button>
     <span class="etat" id="motsSynthese"></span>
   </div>
-  <textarea id="synthese" style="min-height:240px" oninput="majMotsSynthese()" onchange="E.synthese=this.value;sauver()"></textarea>
+  <div class="barre couleurs">
+    <span class="sous" style="margin:0">Couleur du texte sélectionné</span>
+    <button class="pastille" style="background:#1C9C73" title="Vert" onclick="colorerSynthese('#1C9C73')"></button>
+    <button class="pastille" style="background:#E08A2E" title="Orange" onclick="colorerSynthese('#E08A2E')"></button>
+    <button class="pastille" style="background:#C0392B" title="Rouge" onclick="colorerSynthese('#C0392B')"></button>
+    <button class="pastille" style="background:#0E2C49" title="Bleu nuit" onclick="colorerSynthese('#0E2C49')"></button>
+    <button class="btn sec" onclick="colorerSynthese('')">Sans couleur</button>
+    <button class="btn sec" onclick="grasSynthese()"><b>G</b></button>
+  </div>
+  <div id="synthese" class="saisieRiche" contenteditable="true"
+       oninput="majMotsSynthese();E.synthese=this.innerHTML;sauver()"></div>
 </section>
 
 </main>
@@ -1726,7 +1750,9 @@ const PDF_COLS = {
 };
 const PDF_PERIODES = [["mois","Mois"],["trimestre","Trimestre"],["exercice","Exercice"],["atelier","Atelier"]];
 /* lignes qui ne sont pas des personnes et ne doivent pas entrer dans les classements */
-const PAS_UNE_PERSONNE = /^(inactif|sstacc|st\d|st1|total|web livraison)/i;
+/* DRG = interventions sous garantie, pas un vendeur ; le (?![a-z]) épargne
+   un vrai code qui commencerait par ces lettres, comme CEDRG-GUYOT Cédric. */
+const PAS_UNE_PERSONNE = /^(inactif|sstacc|st\d|st1|total|web livraison|drg(?![a-z]))/i;
 
 const E = {
   magasin:"", date:"", impressionSV:"", txtSV:"",
@@ -1904,7 +1930,8 @@ function lireperfs(table, indicateurs){
     });
     if(!rempli) return;
     if(ligneTotal){ Object.assign(totaux, cible); }
-    else if(nom) vendeurs.push(Object.assign({nom: nom}, cible));
+    // DRG, WEB LIVRAISON, ST… : des lignes de flux, pas des collaborateurs
+    else if(nom && !PAS_UNE_PERSONNE.test(nom)) vendeurs.push(Object.assign({nom: nom}, cible));
   });
 
   if(!Object.keys(totaux).length) return null;
@@ -2137,7 +2164,7 @@ function remiseAZero(){
   // remise à blanc de l'interface
   const v = (id, val) => { const e = document.getElementById(id); if(e) e.value = val; };
   v("magasin",""); v("dateVisite", E.date); v("impressionSV","");
-  v("synthese",""); v("dictee",""); v("restitution","");
+  v("dictee",""); v("restitution",""); poserSynthese("");
   v("interlocuteur", E.interlocuteur);
   v("stEntree",""); v("stSortie",""); v("encNbre",""); v("encValeur","");
   const s = document.getElementById("stSolde"); if(s) s.textContent = "—";
@@ -4038,8 +4065,9 @@ function composerRestitution(){
 
   L.push("CONSTAT");
   const pos = constatsPositifs(), ecarts = constatsEcarts();
-  if(pos.length){ L.push("Ce qui tient. " + pos.join(" ")); L.push(""); }
-  if(ecarts.length) L.push("Ce qui est à reprendre. " + ecarts.join(" "));
+  // un point par ligne : le pavé vert et le pavé orange restent lisibles
+  if(pos.length){ L.push("Ce qui tient"); pos.forEach(t => L.push("- " + t)); L.push(""); }
+  if(ecarts.length){ L.push("Ce qui est à reprendre"); ecarts.forEach(t => L.push("- " + t)); }
   else if(!pos.length) L.push("À compléter : points de contrôle, échanges avec les interlocuteurs du site.");
   L.push("");
 
@@ -4086,6 +4114,9 @@ function composerRestitution(){
   sauver();
 }
 
+/* un intitulé tout en majuscules ferme le pavé en cours */
+const EST_TITRE_SECTION = /^[A-ZÀ-Ÿ][A-ZÀ-Ÿ0-9\s''’\-]{3,}$/;
+
 /* Aperçu HTML coloré de la restitution.
    Points positifs (Ce qui tient…) en vert, points à travailler (Ce qui est
    à reprendre…) en orange. L'aperçu suit la saisie en temps réel. */
@@ -4100,23 +4131,25 @@ function majApercuRestitution(){
   // Découper par paragraphes non vides
   const paras = texte.split(/\n+/).filter(p => p.trim());
   const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-  const html = paras.map(p => {
+  const morceaux = [];
+  let groupe = null;              // "positif" | "a-travailler" | null
+  const fermer = () => { if(groupe){ morceaux.push("</div>"); groupe = null; } };
+  const ouvrir = (cl, titre) => {
+    fermer(); groupe = cl;
+    morceaux.push('<div class="bloc-' + cl + '"><p class="bloc-intitule">' + esc(titre) + "</p>");
+  };
+  paras.forEach(p => {
     const trim = p.trim();
-    // Titres de section (CONSTAT / ANALYSE / PLAN D'ACTION…)
-    if(/^[A-ZÀ-Ÿ][A-ZÀ-Ÿ\s'']{3,}$/.test(trim) && trim.length < 60){
-      return '<p class="titre-section">' + esc(trim) + '</p>';
+    // un pavé court jusqu'au titre de section suivant ou jusqu'à l'autre pavé
+    if(EST_TITRE_SECTION.test(trim) && trim.length < 60){
+      fermer(); morceaux.push('<p class="titre-section">' + esc(trim) + "</p>"); return;
     }
-    // Points positifs
-    if(/^Ce qui tient\b/i.test(trim)){
-      return '<p class="bloc-positif">' + esc(trim) + '</p>';
-    }
-    // Points à travailler
-    if(/^Ce qui est à reprendre\b/i.test(trim)){
-      return '<p class="bloc-a-travailler">' + esc(trim) + '</p>';
-    }
-    return '<p>' + esc(trim) + '</p>';
-  }).join("");
-  div.innerHTML = html;
+    if(/^Ce qui tient\b/i.test(trim)){ ouvrir("positif", trim.replace(/[.\s]+$/, "")); return; }
+    if(/^Ce qui est à reprendre\b/i.test(trim)){ ouvrir("a-travailler", trim.replace(/[.\s]+$/, "")); return; }
+    morceaux.push("<p>" + esc(trim) + "</p>");
+  });
+  fermer();
+  div.innerHTML = morceaux.join("");
 }
 
 function majMots(){
@@ -4299,14 +4332,70 @@ function composerSynthese(){
     texte = construire(secTrim);
   }
 
-  E.synthese = texte;
-  document.getElementById("synthese").value = texte;
+  E.synthese = texteVersHtml(texte);
+  poserSynthese(E.synthese);
   majMotsSynthese();
   sauver();
 }
 
+/* La synthèse part par mail : on la saisit en texte enrichi pour pouvoir
+   colorer un passage, et on la copie avec ses couleurs. */
+function texteVersHtml(t){
+  return String(t || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+                        .replace(/\n/g,"<br>");
+}
+function synthEl(){ return document.getElementById("synthese"); }
+function syntheseTexte(){
+  const el = synthEl();
+  if(!el) return "";
+  const t = el.innerText || el.textContent || "";
+  if(t) return t;
+  return String(el.innerHTML || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+}
+function poserSynthese(valeur){
+  const el = synthEl(); if(!el) return;
+  const v = String(valeur || "");
+  // un brouillon d'avant la mise en couleur est du texte brut
+  el.innerHTML = /<(br|div|span|p|b|i|font)\b/i.test(v) ? v : texteVersHtml(v);
+}
+function colorerSynthese(couleur){
+  const el = synthEl(); if(!el) return;
+  el.focus();
+  const sel = window.getSelection();
+  if(!sel || sel.isCollapsed){ alert("Sélectionnez d'abord le texte à colorer."); return; }
+  try{ document.execCommand("styleWithCSS", false, true); }catch(e){}
+  document.execCommand("foreColor", false, couleur || "#1E222E");
+  E.synthese = el.innerHTML; sauver();
+}
+function grasSynthese(){
+  const el = synthEl(); if(!el) return;
+  el.focus();
+  try{ document.execCommand("styleWithCSS", false, true); }catch(e){}
+  document.execCommand("bold");
+  E.synthese = el.innerHTML; sauver();
+}
+/* copie avec les couleurs : Outlook et Gmail collent le HTML */
+async function copierSynthese(btn){
+  const el = synthEl(); if(!el) return;
+  const avant = btn ? btn.textContent : "";
+  const html = el.innerHTML, texte = syntheseTexte();
+  try{
+    if(navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({
+        "text/html": new Blob([html], {type:"text/html"}),
+        "text/plain": new Blob([texte], {type:"text/plain"})
+      })]);
+    } else {
+      const sel = window.getSelection(), r = document.createRange();
+      r.selectNodeContents(el); sel.removeAllRanges(); sel.addRange(r);
+      document.execCommand("copy"); sel.removeAllRanges();
+    }
+    if(btn){ btn.textContent = "Copié"; setTimeout(() => { btn.textContent = avant; }, 1500); }
+  }catch(e){ alert("Copie impossible : " + e.message); }
+}
+
 function majMotsSynthese(){
-  const n = compterMots(document.getElementById("synthese").value);
+  const n = compterMots(syntheseTexte());
   const e = document.getElementById("motsSynthese");
   e.textContent = n + " mots sur " + CADRE.motsMaxSynthese + " maximum";
   e.className = "etat" + (n > CADRE.motsMaxSynthese ? " ko" : (n ? " ok" : ""));
@@ -4470,38 +4559,59 @@ async function exporterPDF(){
     if(E.restitution){
       doc.addPage(); y = M; titre("Restitution");
       // Rendu coloré : points positifs (vert) / points à travailler (orange)
+      // Un pavé vert pour ce qui tient, un pavé orange pour ce qui est à reprendre :
+      // l'intitulé et tous ses points sont dans le même fond, jusqu'au titre de section suivant.
       const paragraphes = E.restitution.split(/\n+/).filter(p => p.trim());
-      const largeurBloc = L;  // largeur utile
+      const PAVES = {
+        positif:      {fond:[232,245,233], barre:[28,156,115],  texte:[27,94,32]},
+        "a-travailler": {fond:[255,243,224], barre:[224,138,46], texte:[122,74,15]}
+      };
+      let pave = null;            // pavé en cours
+      const ligneH = 4.6, padH = 3;
+      // fond dessiné ligne à ligne : la couleur suit le texte, y compris après un saut de page
+      const fondLigne = (pv, haut) => {
+        const c = PAVES[pv];
+        doc.setFillColor(c.fond[0], c.fond[1], c.fond[2]);
+        doc.rect(M, y - 3.4, L, haut, "F");
+        doc.setFillColor(c.barre[0], c.barre[1], c.barre[2]);
+        doc.rect(M, y - 3.4, 1.4, haut, "F");
+      };
+      const ecrire = (texte, gras, couleur, pv) => {
+        doc.setFont("helvetica", gras ? "bold" : "normal");
+        doc.setFontSize(9.5);
+        const dedans = pv ? 5 : 0;
+        const lignes = doc.splitTextToSize(net(texte), L - dedans - 3);
+        lignes.forEach(l => {
+          saut(ligneH + 4);
+          if(pv) fondLigne(pv, ligneH);
+          doc.setTextColor(couleur[0], couleur[1], couleur[2]);
+          doc.text(l, M + dedans, y);
+          y += ligneH;
+        });
+      };
+      const fermerPave = () => {
+        if(!pave) return;
+        saut(padH + 2); fondLigne(pave, padH); y += padH + 2;
+        pave = null;
+      };
       paragraphes.forEach(p => {
         const trim = p.trim();
-        // Détection du type de paragraphe
-        let couleurFond = null, couleurTexte = [30,34,46], bold = false;
-        if(/^Ce qui tient\b/i.test(trim)){
-          couleurFond = [232,245,233]; couleurTexte = [27,94,32];
-        } else if(/^Ce qui est à reprendre\b/i.test(trim)){
-          couleurFond = [255,243,224]; couleurTexte = [122,74,15];
-        } else if(/^[A-ZÀ-Ÿ][A-ZÀ-Ÿ\s'']{3,}$/.test(trim) && trim.length < 60){
-          bold = true; couleurTexte = [14,44,73];
+        if(EST_TITRE_SECTION.test(trim) && trim.length < 60){
+          fermerPave(); y += 1;
+          ecrire(trim, true, [14,44,73], null); y += 1.5; return;
         }
-        // Découpe multi-lignes
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(9.5);
-        const lignes = doc.splitTextToSize(net(trim), largeurBloc - (couleurFond ? 6 : 0));
-        const hauteur = lignes.length * 4.6 + (couleurFond ? 4 : 0);
-        saut(hauteur + 2);
-        if(couleurFond){
-          doc.setFillColor(couleurFond[0], couleurFond[1], couleurFond[2]);
-          doc.rect(M, y - 4, largeurBloc, hauteur, "F");
-          // barre gauche
-          const barre = couleurFond[0] === 232 ? [28,156,115] : [224,138,46];
-          doc.setFillColor(barre[0], barre[1], barre[2]);
-          doc.rect(M, y - 4, 1.2, hauteur, "F");
+        const vert = /^Ce qui tient\b/i.test(trim), orange = /^Ce qui est à reprendre\b/i.test(trim);
+        if(vert || orange){
+          fermerPave(); y += 2;
+          pave = vert ? "positif" : "a-travailler";
+          saut(padH + 6); fondLigne(pave, padH); y += padH;      // marge haute du pavé
+          ecrire(trim.replace(/[.\s]+$/, "").toUpperCase(), true, PAVES[pave].texte, pave);
+          return;
         }
-        doc.setTextColor(couleurTexte[0], couleurTexte[1], couleurTexte[2]);
-        const decalX = couleurFond ? 4 : 0;
-        lignes.forEach(l => { doc.text(l, M + decalX, y); y += 4.6; });
-        y += couleurFond ? 3 : 1.5;
+        if(pave) ecrire(trim, false, PAVES[pave].texte, pave);
+        else { ecrire(trim, false, [30,34,46], null); y += 1.5; }
       });
+      fermerPave();
       doc.setTextColor(30,34,46);
       doc.setFont("helvetica","normal");
     }
@@ -4538,7 +4648,7 @@ async function charger(){
     Object.assign(E, d);
     document.getElementById("magasin").value = E.magasin || "";
     document.getElementById("dateVisite").value = E.date || "";
-    document.getElementById("synthese").value = E.synthese || "";
+    poserSynthese(E.synthese || "");
     majMotsSynthese(); rendreDictees();
     if(E.fdr && E.fdr.texte) document.getElementById("texteFDR").value = E.fdr.texte;
     rendreFDR();
@@ -4698,7 +4808,7 @@ function appliquerCR(paquet){
   // Rafraîchir tous les champs visibles
   document.getElementById("magasin").value = E.magasin || "";
   document.getElementById("dateVisite").value = E.date || "";
-  document.getElementById("synthese").value = E.synthese || "";
+  poserSynthese(E.synthese || "");
   majMotsSynthese && majMotsSynthese();
   rendreDictees && rendreDictees();
   if(E.fdr && E.fdr.texte) document.getElementById("texteFDR").value = E.fdr.texte;
