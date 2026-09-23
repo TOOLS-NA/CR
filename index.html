@@ -545,9 +545,20 @@ h2{justify-content:flex-start}
   <p class="sous">Document de restitution : constats, analyses, plan d'action sur deux mois. 1800 mots maximum. Seul ce qui est hors objectif est repris, précédé de ce qui tient.</p>
   <div class="barre" style="margin-top:0">
     <button class="btn" onclick="composerRestitution()">Composer la restitution</button>
+    <button class="btn sec" onclick="copierZone('restitution', this)">Copier</button>
     <span class="etat" id="motsRestitution"></span>
   </div>
-  <textarea id="restitution" style="min-height:320px" oninput="majMots();majApercuRestitution()" onchange="E.restitution=this.value;sauver();majApercuRestitution()"></textarea>
+  <div class="barre couleurs">
+    <span class="sous" style="margin:0">Couleur du texte sélectionné</span>
+    <button class="pastille" style="background:#1C9C73" title="Vert" onclick="colorerZone('restitution','#1C9C73')"></button>
+    <button class="pastille" style="background:#E08A2E" title="Orange" onclick="colorerZone('restitution','#E08A2E')"></button>
+    <button class="pastille" style="background:#C0392B" title="Rouge" onclick="colorerZone('restitution','#C0392B')"></button>
+    <button class="pastille" style="background:#0E2C49" title="Bleu nuit" onclick="colorerZone('restitution','#0E2C49')"></button>
+    <button class="btn sec" onclick="colorerZone('restitution','')">Sans couleur</button>
+    <button class="btn sec" onclick="grasZone('restitution')"><b>G</b></button>
+  </div>
+  <div id="restitution" class="saisieRiche" style="min-height:320px" contenteditable="true"
+       oninput="majMots();E.restitution=this.innerHTML;sauver();majApercuRestitution()"></div>
   <div class="apercu-titre">Aperçu coloré</div>
   <div id="apercuRestitution" class="apercu-restitution"></div>
 </section>
@@ -2164,7 +2175,7 @@ function remiseAZero(){
   // remise à blanc de l'interface
   const v = (id, val) => { const e = document.getElementById(id); if(e) e.value = val; };
   v("magasin",""); v("dateVisite", E.date); v("impressionSV","");
-  v("dictee",""); v("restitution",""); poserSynthese("");
+  v("dictee",""); poserZone("restitution", ""); poserSynthese("");
   v("interlocuteur", E.interlocuteur);
   v("stEntree",""); v("stSortie",""); v("encNbre",""); v("encValeur","");
   const s = document.getElementById("stSolde"); if(s) s.textContent = "—";
@@ -4107,8 +4118,8 @@ function composerRestitution(){
   L.push("Je reste disponible pour en échanger.");
 
   const texte = L.join("\n");
-  E.restitution = texte;
-  document.getElementById("restitution").value = texte;
+  E.restitution = texteVersHtml(texte);
+  poserZone("restitution", E.restitution);
   majMots();
   majApercuRestitution();
   sauver();
@@ -4123,7 +4134,7 @@ const EST_TITRE_SECTION = /^[A-ZÀ-Ÿ][A-ZÀ-Ÿ0-9\s''’\-]{3,}$/;
 function majApercuRestitution(){
   const div = document.getElementById("apercuRestitution");
   if(!div) return;
-  const texte = (document.getElementById("restitution") || {}).value || "";
+  const texte = texteDe("restitution");
   if(!texte.trim()){
     div.innerHTML = '<p style="color:#6B7A88;font-style:italic;margin:4px 0">La restitution s\'affichera ici avec les points positifs en vert et les points à travailler en orange.</p>';
     return;
@@ -4153,7 +4164,7 @@ function majApercuRestitution(){
 }
 
 function majMots(){
-  const n = compterMots(document.getElementById("restitution").value);
+  const n = compterMots(texteDe("restitution"));
   const e = document.getElementById("motsRestitution");
   e.textContent = n + " mots sur " + CADRE.motsMax + " maximum";
   e.className = "etat" + (n > CADRE.motsMax ? " ko" : (n ? " ok" : ""));
@@ -4345,40 +4356,45 @@ function texteVersHtml(t){
                         .replace(/\n/g,"<br>");
 }
 function synthEl(){ return document.getElementById("synthese"); }
-function syntheseTexte(){
-  const el = synthEl();
+/* une zone de texte enrichi : lecture du texte brut, pose, couleur, gras, copie */
+function texteDe(id){
+  const el = document.getElementById(id);
   if(!el) return "";
+  if(typeof el.value === "string" && el.tagName === "TEXTAREA") return el.value;
   const t = el.innerText || el.textContent || "";
   if(t) return t;
-  return String(el.innerHTML || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+  return String(el.innerHTML || "").replace(/<\/(p|div|li)>/gi, "\n")
+                                   .replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
 }
-function poserSynthese(valeur){
-  const el = synthEl(); if(!el) return;
+function poserZone(id, valeur){
+  const el = document.getElementById(id); if(!el) return;
   const v = String(valeur || "");
-  // un brouillon d'avant la mise en couleur est du texte brut
-  el.innerHTML = /<(br|div|span|p|b|i|font)\b/i.test(v) ? v : texteVersHtml(v);
+  el.innerHTML = /<(br|div|span|p|b|i|font|ul|ol)\b/i.test(v) ? v : texteVersHtml(v);
 }
-function colorerSynthese(couleur){
-  const el = synthEl(); if(!el) return;
+function colorerZone(id, couleur){
+  const el = document.getElementById(id); if(!el) return;
   el.focus();
   const sel = window.getSelection();
-  if(!sel || sel.isCollapsed){ alert("Sélectionnez d'abord le texte à colorer."); return; }
+  if(!sel || sel.isCollapsed || !el.contains(sel.anchorNode)){
+    alert("Sélectionnez d'abord le texte à colorer."); return;
+  }
   try{ document.execCommand("styleWithCSS", false, true); }catch(e){}
   document.execCommand("foreColor", false, couleur || "#1E222E");
-  E.synthese = el.innerHTML; sauver();
+  if(id === "synthese") E.synthese = el.innerHTML; else E.restitution = el.innerHTML;
+  sauver();
 }
-function grasSynthese(){
-  const el = synthEl(); if(!el) return;
+function grasZone(id){
+  const el = document.getElementById(id); if(!el) return;
   el.focus();
   try{ document.execCommand("styleWithCSS", false, true); }catch(e){}
   document.execCommand("bold");
-  E.synthese = el.innerHTML; sauver();
+  if(id === "synthese") E.synthese = el.innerHTML; else E.restitution = el.innerHTML;
+  sauver();
 }
-/* copie avec les couleurs : Outlook et Gmail collent le HTML */
-async function copierSynthese(btn){
-  const el = synthEl(); if(!el) return;
+async function copierZone(id, btn){
+  const el = document.getElementById(id); if(!el) return;
   const avant = btn ? btn.textContent : "";
-  const html = el.innerHTML, texte = syntheseTexte();
+  const html = el.innerHTML, texte = texteDe(id);
   try{
     if(navigator.clipboard && window.ClipboardItem){
       await navigator.clipboard.write([new ClipboardItem({
@@ -4393,6 +4409,53 @@ async function copierSynthese(btn){
     if(btn){ btn.textContent = "Copié"; setTimeout(() => { btn.textContent = avant; }, 1500); }
   }catch(e){ alert("Copie impossible : " + e.message); }
 }
+/* paragraphes d'une zone enrichie, avec la couleur posée à la main s'il y en a une */
+function paragraphesRiches(html){
+  const texteSeul = !/<[a-z][\s\S]*>/i.test(String(html || ""));
+  if(texteSeul)
+    return String(html || "").split(/\n+/).filter(t => t.trim()).map(t => ({texte: t.trim(), couleur: null}));
+  const hote = document.createElement("div");
+  hote.innerHTML = html;
+  const sortie = [];
+  let courant = {texte:"", couleur:null};
+  const pousser = () => { if(courant.texte.trim()) sortie.push({texte: courant.texte.trim(), couleur: courant.couleur}); courant = {texte:"", couleur:null}; };
+  const parcourir = (n, couleur) => {
+    n.childNodes.forEach(f => {
+      if(f.nodeType === 3){ courant.texte += f.nodeValue; if(couleur && !courant.couleur) courant.couleur = couleur; return; }
+      if(f.nodeType !== 1) return;
+      const nom = f.tagName.toLowerCase();
+      if(nom === "br"){ pousser(); return; }
+      const c = (f.style && f.style.color) || f.getAttribute("color") || couleur;
+      if(/^(div|p|li|tr)$/.test(nom)){ pousser(); parcourir(f, c); pousser(); return; }
+      parcourir(f, c);
+    });
+  };
+  parcourir(hote, null);
+  pousser();
+  return sortie;
+}
+/* "rgb(28, 156, 115)" ou "#1C9C73" -> [28,156,115] */
+function versRvb(couleur){
+  if(!couleur) return null;
+  const m = String(couleur).match(/rgba?\((\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
+  if(m) return [+m[1], +m[2], +m[3]];
+  const x = String(couleur).trim().match(/^#?([0-9a-f]{6})$/i);
+  if(!x) return null;
+  const v = parseInt(x[1], 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+function syntheseTexte(){
+  const el = synthEl();
+  if(!el) return "";
+  const t = el.innerText || el.textContent || "";
+  if(t) return t;
+  return String(el.innerHTML || "").replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+}
+function poserSynthese(valeur){ poserZone("synthese", valeur); }   // brouillon d'avant : texte brut
+function colorerSynthese(couleur){ colorerZone("synthese", couleur); }
+function grasSynthese(){ grasZone("synthese"); }
+/* copie avec les couleurs : Outlook et Gmail collent le HTML */
+function copierSynthese(btn){ return copierZone("synthese", btn); }
 
 function majMotsSynthese(){
   const n = compterMots(syntheseTexte());
@@ -4561,7 +4624,7 @@ async function exporterPDF(){
       // Rendu coloré : points positifs (vert) / points à travailler (orange)
       // Un pavé vert pour ce qui tient, un pavé orange pour ce qui est à reprendre :
       // l'intitulé et tous ses points sont dans le même fond, jusqu'au titre de section suivant.
-      const paragraphes = E.restitution.split(/\n+/).filter(p => p.trim());
+      const paragraphes = paragraphesRiches(E.restitution);
       const PAVES = {
         positif:      {fond:[232,245,233], barre:[28,156,115],  texte:[27,94,32]},
         "a-travailler": {fond:[255,243,224], barre:[224,138,46], texte:[122,74,15]}
@@ -4595,21 +4658,22 @@ async function exporterPDF(){
         pave = null;
       };
       paragraphes.forEach(p => {
-        const trim = p.trim();
+        const trim = p.texte.trim();
+        const perso = versRvb(p.couleur);          // couleur choisie par le rédacteur
         if(EST_TITRE_SECTION.test(trim) && trim.length < 60){
           fermerPave(); y += 1;
-          ecrire(trim, true, [14,44,73], null); y += 1.5; return;
+          ecrire(trim, true, perso || [14,44,73], null); y += 1.5; return;
         }
         const vert = /^Ce qui tient\b/i.test(trim), orange = /^Ce qui est à reprendre\b/i.test(trim);
         if(vert || orange){
           fermerPave(); y += 2;
           pave = vert ? "positif" : "a-travailler";
           saut(padH + 6); fondLigne(pave, padH); y += padH;      // marge haute du pavé
-          ecrire(trim.replace(/[.\s]+$/, "").toUpperCase(), true, PAVES[pave].texte, pave);
+          ecrire(trim.replace(/[.\s]+$/, "").toUpperCase(), true, perso || PAVES[pave].texte, pave);
           return;
         }
-        if(pave) ecrire(trim, false, PAVES[pave].texte, pave);
-        else { ecrire(trim, false, [30,34,46], null); y += 1.5; }
+        if(pave) ecrire(trim, false, perso || PAVES[pave].texte, pave);
+        else { ecrire(trim, false, perso || [30,34,46], null); y += 1.5; }
       });
       fermerPave();
       doc.setTextColor(30,34,46);
@@ -4653,7 +4717,7 @@ async function charger(){
     if(E.fdr && E.fdr.texte) document.getElementById("texteFDR").value = E.fdr.texte;
     rendreFDR();
     document.getElementById("dictee").value = E.dictee || "";
-    document.getElementById("restitution").value = E.restitution || "";
+    poserZone("restitution", E.restitution || "");
     if(E.interlocuteur) document.getElementById("interlocuteur").value = E.interlocuteur;
     majMots();
     majApercuRestitution();
@@ -4814,7 +4878,7 @@ function appliquerCR(paquet){
   if(E.fdr && E.fdr.texte) document.getElementById("texteFDR").value = E.fdr.texte;
   rendreFDR && rendreFDR();
   const d = document.getElementById("dictee"); if(d) d.value = E.dictee || "";
-  const r = document.getElementById("restitution"); if(r) r.value = E.restitution || "";
+  poserZone("restitution", E.restitution || "");
   const i = document.getElementById("interlocuteur"); if(i && E.interlocuteur) i.value = E.interlocuteur;
   majMots && majMots();
   majApercuRestitution && majApercuRestitution();
