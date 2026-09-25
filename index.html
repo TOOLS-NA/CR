@@ -4084,8 +4084,10 @@ function composerRestitution(){
   L.push("");
 
   L.push("ANALYSE");
+  // un sujet par ligne : l'analyse en un seul bloc était illisible
   const ana = phrasesAnalyse();
-  L.push(ana.length ? ana.join(" ") : "À compléter : importez les fichiers pour alimenter l'analyse.");
+  if(ana.length) ana.forEach(t => L.push("- " + t.replace(/^[-\s]+/, "").replace(/\s+/g, " ").trim()));
+  else L.push("- À compléter : importez les fichiers pour alimenter l'analyse.");
   L.push("");
 
   L.push("PLAN D'ACTION SUR LES DEUX MOIS");
@@ -4365,7 +4367,8 @@ function texteDe(id){
   const t = el.innerText || el.textContent || "";
   if(t) return t;
   return String(el.innerHTML || "").replace(/<\/(p|div|li)>/gi, "\n")
-                                   .replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "");
+    .replace(/<br\s*\/?>/gi, "\n").replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&");
 }
 function poserZone(id, valeur){
   const el = document.getElementById(id); if(!el) return;
