@@ -412,6 +412,13 @@ h2{justify-content:flex-start}
   <p class="etat sousimp" id="etat_tsm">TSM préchargé. Importez-en un autre pour le remplacer.</p>
   <p class="sous"><label>Mois de la prévision
     <select id="moisPrev" onchange="choisirMoisPrev(this)"></select></label></p>
+  <div class="barre" style="margin-top:0">
+    <button class="btn sec" onclick="reprendrePotentielSuiviCA(this)">Reprendre le potentiel du Suivi CA</button>
+    <input type="text" id="urlSuiviCA" style="max-width:380px"
+           placeholder="Adresse de l'appli Suivi CA (…/exec)"
+           onchange="E.suiviUrl=this.value.trim();sauver();rendreAtterrissage()">
+    <span class="etat" id="etatSuiviCA"></span>
+  </div>
   <p class="sous" id="noteAtterrissage"></p>
   <div class="enrobe">
     <table class="tb" style="min-width:700px">
@@ -1783,7 +1790,7 @@ const E = {
   tsm:null,
   qs:{},
   potentiel:{mois:null, prestaMois:null, collabs:{}},
-  prevExport:{}, moisPrev:null, qsInfo:null,
+  prevExport:{}, moisPrev:null, qsInfo:null, suiviUrl:"", potentielSource:null,
   gmdr:{acc:[], presta:[], titre:""},
   sources:{},
   controles:{}, zones:{},
@@ -2163,7 +2170,7 @@ function remiseAZero(){
     "L'URL du relais est conservée.");
   if(!ok) return;
 
-  const relais = E.relais, fdr = E.fdr;          // réglage et travail trimestriel conservés
+  const relais = E.relais, fdr = E.fdr, suiviUrl = E.suiviUrl;   // réglages conservés
   viderChiffres();
 
   E.magasin = ""; E.impressionSV = ""; E.txtSV = "";
@@ -2177,7 +2184,8 @@ function remiseAZero(){
   E.potentiel = {mois:null, prestaMois:null, collabs:{}};
   E.prevExport = {}; E.moisPrev = null;
   E._constats = []; E._croise = [];
-  E.relais = relais; E.fdr = fdr;
+  E.relais = relais; E.fdr = fdr; E.suiviUrl = suiviUrl || "";
+  E.potentielSource = null;
   E.date = new Date().toISOString().slice(0,10);
 
   // remise à blanc de l'interface
@@ -2555,6 +2563,7 @@ function majPotentiel(el){
   const c = el.dataset.p;
   if(c.startsWith("collab:")) E.potentiel.collabs[c.slice(7)] = v;
   else E.potentiel[c] = v;
+  E.potentielSource = null;            // dès qu'on corrige une case, le potentiel n'est plus celui du Suivi CA
   rendreAtterrissage(); rendreAnalyse(); sauver();
 }
 
@@ -2582,15 +2591,88 @@ function choisirMoisPrev(el){
   reprendreTsm(); completerCalculs();
   rendrePerfs(); rendreAtterrissage(); rendreAnalyse(); sauver();
 }
+/* ===== Suivi CA : le potentiel du mois, repris sans ressaisie =====
+   L'appli Suivi CA tient le portefeuille de commandes ; celles qui sont cochées
+   « facturable ce mois » forment le potentiel. Son API renvoie ce potentiel pour
+   le magasin et pour chaque vendeur. La saisie à la main reste possible :
+   ce bouton ne fait que pré-remplir. */
+function periodeSuiviCA(){
+  const m = moisExercice("acc");
+  const d = E.date ? new Date(E.date) : new Date();
+  let an = d.getFullYear();
+  if(m > (d.getMonth() + 1)) an -= 1;          // un mois plus grand que celui de la visite est passé
+  return an + "-" + String(m).padStart(2, "0");
+}
+async function reprendrePotentielSuiviCA(btn){
+  const et = document.getElementById("etatSuiviCA");
+  const dire = (txt, cls) => { if(et){ et.className = "etat " + (cls || ""); et.textContent = txt; } };
+  const url = (E.suiviUrl || "").trim();
+  if(!url){ dire("Renseignez l'adresse de l'appli Suivi CA (le lien qui finit par /exec).", "ko"); return; }
+  if(!E.magasin){ dire("Choisissez d'abord le magasin.", "ko"); return; }
+
+  const code = codeCanonique(E.magasin), periode = periodeSuiviCA();
+  const avant = btn ? btn.textContent : "";
+  if(btn){ btn.textContent = "…"; btn.disabled = true; }
+  dire("Interrogation du Suivi CA pour " + code + " sur " + periode + "…");
+  try{
+    const adresse = url + (url.indexOf("?") > -1 ? "&" : "?") +
+      "action=dashboard.get&magasin_code=" + encodeURIComponent(code) +
+      "&periode=" + encodeURIComponent(periode);
+    const rep = await fetch(adresse, {method:"GET", redirect:"follow"});
+    if(!rep.ok) throw new Error("réponse " + rep.status);
+    const j = await rep.json();
+    if(!j || !j.ok){
+      const msg = (j && j.error && j.error.message) || "réponse inattendue";
+      dire(/inconnu/i.test(msg) ? E.magasin + " n'est pas suivi dans le Suivi CA : saisie à la main."
+                                : "Suivi CA : " + msg, "ko");
+      return;
+    }
+    const d = j.data || {}, mag = d.magasin || {}, vend = d.vendeurs || [];
+    const dejaSaisi = E.potentiel.mois !== null || E.potentiel.prestaMois !== null ||
+                      Object.keys(E.potentiel.collabs || {}).length > 0;
+    if(dejaSaisi && !E.potentielSource &&
+       !confirm("Des potentiels ont été saisis à la main. Les remplacer par ceux du Suivi CA ?")){
+      dire("Reprise annulée, la saisie à la main est conservée.");
+      return;
+    }
+    E.potentiel.mois = nombre(mag.potentiel_acc);
+    E.potentiel.prestaMois = nombre(mag.potentiel_mo);
+    E.potentiel.collabs = {};
+    let repris = 0;
+    vend.forEach(v => {
+      const p = nombre(v.potentiel_acc);
+      if(!p) return;
+      const cle = (E.vendeurs.mois || []).length ? cleCollab(v.code + "-" + (v.nom_affiche || ""))
+                                                 : codeVendeur(v.code);
+      E.potentiel.collabs[cle] = p; repris++;
+    });
+    E.potentielSource = {quand: new Date().toISOString(), periode: periode, magasin: code, vendeurs: repris};
+    completerCalculs(); rendreAtterrissage(); rendreAnalyse(); sauver();
+    dire("Potentiel repris : " + fmt(E.potentiel.mois, "eur") + " en accessoires, " +
+         fmt(E.potentiel.prestaMois, "eur") + " en prestation, " + repris + " collaborateur" +
+         (repris > 1 ? "s" : "") + ".", "ok");
+  }catch(err){
+    dire("Suivi CA injoignable : " + err.message + ". Le potentiel reste à saisir à la main.", "ko");
+  }finally{
+    if(btn){ btn.textContent = avant; btn.disabled = false; }
+  }
+}
+
 function rendreAtterrissage(){
+  const champUrl = document.getElementById("urlSuiviCA");
+  if(champUrl && champUrl.value !== (E.suiviUrl || "")) champUrl.value = E.suiviUrl || "";
   const tb = document.getElementById("corpsAtterrissage");
   if(!tb) return;
   const note = document.getElementById("noteAtterrissage");
   const mp = moisPrevision("acc"), mpp = moisPrevision("presta"), mc = moisPrevision("collab");
   const nomMois = NOMS_MOIS[mp.m - 1];
   rendreChoixMois(mp);
+  const src = E.potentielSource;
   const regle = " Atterrissage = réalisé + potentiel. Reste à faire = prévision − atterrissage. " +
-    "Le potentiel se saisit à la main tant que le suivi CA n'est pas connecté.";
+    (src ? "Potentiel repris du Suivi CA le " + new Date(src.quand).toLocaleDateString("fr-FR") +
+           " à " + new Date(src.quand).toLocaleTimeString("fr-FR", {hour:"2-digit", minute:"2-digit"}) +
+           " (période " + src.periode + "), modifiable à la main."
+         : "Le potentiel se saisit à la main, ou se reprend du Suivi CA.");
   const t = tsmActif();
   const connu = t && E.magasin && t.sites[codeCanonique(E.magasin)];
   note.className = "sous";
