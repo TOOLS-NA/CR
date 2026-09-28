@@ -1143,10 +1143,10 @@ function atterrissage(type){
 }
 function atterrissageCollabs(){
   const vend = (E.vendeurs.mois || []).filter(v => v.ca && v.ca.real > 0);
-  const codes = new Set(vend.filter(v => !PAS_UNE_PERSONNE.test(v.nom)).map(v => cleCollab(v.nom)));
+  const codes = new Set(vend.filter(v => !ligneDeFlux(v.nom)).map(v => cleCollab(v.nom)));
   // un collaborateur peut avoir une prévision sans avoir vendu : le manque est réel
   const site = siteTsm();
-  if(site) Object.keys(site.collabs).forEach(c => { if(!PAS_UNE_PERSONNE.test(c) && !/^VD/i.test(c)) codes.add(c); });
+  if(site) Object.keys(site.collabs).forEach(c => { if(!ligneDeFlux(c) && !ligneDeFlux(site.collabs[c].nom) && !/^VD/i.test(c)) codes.add(c); });
 
   return [...codes].map(c => {
     const v = vend.find(x => cleCollab(x.nom) === c);
@@ -1764,7 +1764,14 @@ const PDF_PERIODES = [["mois","Mois"],["trimestre","Trimestre"],["exercice","Exe
 /* lignes qui ne sont pas des personnes et ne doivent pas entrer dans les classements */
 /* DRG = interventions sous garantie, pas un vendeur ; le (?![a-z]) épargne
    un vrai code qui commencerait par ces lettres, comme CEDRG-GUYOT Cédric. */
-const PAS_UNE_PERSONNE = /^(inactif|sstacc|st\d|st1|total|web livraison|drg(?![a-z]))/i;
+const PAS_UNE_PERSONNE = /^(inactif|sstacc|st\d|st1|total|web[\s-]|livraison|drg(?![a-z]))/i;
+/* Le libellé porte souvent un code devant : « WEBLI-WEB LIVRAISON MAGASIN ».
+   On teste donc le libellé entier et le nom seul. */
+function ligneDeFlux(nom){
+  const s = String(nom || "").trim();
+  if(!s) return false;
+  return PAS_UNE_PERSONNE.test(s) || PAS_UNE_PERSONNE.test(nomCourt(s));
+}
 
 const E = {
   magasin:"", date:"", impressionSV:"", txtSV:"",
@@ -1943,7 +1950,7 @@ function lireperfs(table, indicateurs){
     if(!rempli) return;
     if(ligneTotal){ Object.assign(totaux, cible); }
     // DRG, WEB LIVRAISON, ST… : des lignes de flux, pas des collaborateurs
-    else if(nom && !PAS_UNE_PERSONNE.test(nom)) vendeurs.push(Object.assign({nom: nom}, cible));
+    else if(nom && !ligneDeFlux(nom)) vendeurs.push(Object.assign({nom: nom}, cible));
   });
 
   if(!Object.keys(totaux).length) return null;
@@ -2224,7 +2231,14 @@ function rendreSources(){
 }
 
 /* déduit ce qui manque : taux de marge et panier moyen */
+/* un import antérieur peut avoir laissé des lignes de flux : on les retire */
+function nettoyerVendeurs(){
+  ["mois","saison","prestaMois","prestaSaison"].forEach(k => {
+    if(Array.isArray(E.vendeurs[k])) E.vendeurs[k] = E.vendeurs[k].filter(v => !ligneDeFlux(v.nom));
+  });
+}
 function completerCalculs(){
+  nettoyerVendeurs();
   [E.mois, E.saison, E.prestaMois, E.prestaSaison].forEach(bloc => {
     if(!bloc || !bloc.ca) return;
     ["n1","prev","real"].forEach(c => {
@@ -2387,7 +2401,7 @@ function reprendrePodium(){
   // les collaborateurs du TAC rejoignent les mêmes listes que les exports Excel
   const versVendeurs = (section, periode) => {
     if(!section) return;
-    const liste = section.collabs.filter(r => !PAS_UNE_PERSONNE.test(r.nom) && r.caRea > 0).map(r => ({
+    const liste = section.collabs.filter(r => !ligneDeFlux(r.nom) && r.caRea > 0).map(r => ({
       nom: r.nom,
       ca:    {n1: r.caN1, prev: r.caPrev, real: r.caRea},
       marge: {n1: r.mgN1, prev: null,     real: r.mgRea},
@@ -3279,7 +3293,7 @@ function analysePodium(out){
   }
 
   /* collaborateurs : qui fait décrocher l'OSS */
-  const gens = (S[periode].collabs || []).filter(r => !PAS_UNE_PERSONNE.test(r.nom));
+  const gens = (S[periode].collabs || []).filter(r => !ligneDeFlux(r.nom));
   const avecOss = gens.filter(r => r.ossAccN1 && r.ossAcc !== null)
                       .map(r => ({nom: nomCourt(r.nom), e: ecart(r.ossAcc, r.ossAccN1), v: r.ossAcc}))
                       .filter(r => r.e !== null);
@@ -3631,7 +3645,7 @@ function rendrePA(){
 /* le champ responsable propose l'équipe du magasin, poste à l'appui */
 function champResponsable(i, valeur){
   const eq = equipeDuMagasin();
-  const gens = Object.keys(eq).filter(c => !PAS_UNE_PERSONNE.test(c) && !/^VD/i.test(c))
+  const gens = Object.keys(eq).filter(c => !ligneDeFlux(c) && !ligneDeFlux(eq[c].nom) && !/^VD/i.test(c))
     .map(c => ({nom: nomCourt(eq[c].nom), poste: posteDe(c)}))
     .sort((a,b) => a.nom.localeCompare(b.nom));
   const options = gens.map(g => g.nom + (g.poste ? " — " + g.poste : ""));
