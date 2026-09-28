@@ -2199,7 +2199,12 @@ function remiseAZero(){
   BLOCS.forEach(b => v("z_" + b.k, ""));
   document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed","false"));
 
-  majJauge(); majMots(); majMotsSynthese(); rendreDictees();
+  // messages laissés par la visite précédente
+  ["etatSuiviCA","motsRestitution","motsSynthese"].forEach(id => {
+    const e = document.getElementById(id);
+    if(e){ e.className = "etat"; e.textContent = ""; }
+  });
+  majJauge(); majMots(); majMotsSynthese(); rendreDictees(); majApercuRestitution();
   rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendrePA(); rendreAnalyse(); rendreFDR();
   sauver();
   etatMicro("Compte rendu vierge. Commencez par choisir le magasin et importer les fichiers.", "ok");
