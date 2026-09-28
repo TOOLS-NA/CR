@@ -415,7 +415,8 @@ h2{justify-content:flex-start}
   <div class="barre" style="margin-top:0">
     <button class="btn sec" onclick="reprendrePotentielSuiviCA(this)">Reprendre le potentiel du Suivi CA</button>
     <input type="text" id="urlSuiviCA" style="max-width:380px"
-           placeholder="Adresse de l'appli Suivi CA (…/exec)"
+           placeholder="Service de données du Suivi CA (…/exec)"
+           title="Lien Apps Script du Suivi CA. Videz le champ pour revenir à l'adresse par défaut."
            onchange="E.suiviUrl=this.value.trim();sauver();rendreAtterrissage()">
     <span class="etat" id="etatSuiviCA"></span>
   </div>
@@ -2596,6 +2597,11 @@ function choisirMoisPrev(el){
    « facturable ce mois » forment le potentiel. Son API renvoie ce potentiel pour
    le magasin et pour chaque vendeur. La saisie à la main reste possible :
    ce bouton ne fait que pré-remplir. */
+/* adresse du backend Apps Script du Suivi CA, telle que l'appli Suivi CA l'utilise.
+   Le champ de réglage permet de la remplacer, par exemple après un redéploiement. */
+const SUIVI_CA_URL = "https://script.google.com/macros/s/AKfycbzoHrDvODIhDHXDWz9tNerTzuO9HAglFyJbRyJlsy7aFJBLBM7DmJMzkYckVBT49n8Y/exec";
+function urlSuiviCA(){ return (E.suiviUrl || "").trim() || SUIVI_CA_URL; }
+
 function periodeSuiviCA(){
   const m = moisExercice("acc");
   const d = E.date ? new Date(E.date) : new Date();
@@ -2606,8 +2612,12 @@ function periodeSuiviCA(){
 async function reprendrePotentielSuiviCA(btn){
   const et = document.getElementById("etatSuiviCA");
   const dire = (txt, cls) => { if(et){ et.className = "etat " + (cls || ""); et.textContent = txt; } };
-  const url = (E.suiviUrl || "").trim();
-  if(!url){ dire("Renseignez l'adresse de l'appli Suivi CA (le lien qui finit par /exec).", "ko"); return; }
+  const url = urlSuiviCA();
+  if(!/\/exec(\?|$)/.test(url)){
+    dire("Cette adresse est celle de l'appli Suivi CA, pas de son service de données. " +
+         "Attendu : un lien script.google.com qui finit par /exec. Videz le champ pour reprendre l'adresse par défaut.", "ko");
+    return;
+  }
   if(!E.magasin){ dire("Choisissez d'abord le magasin.", "ko"); return; }
 
   const code = codeCanonique(E.magasin), periode = periodeSuiviCA();
@@ -2620,7 +2630,15 @@ async function reprendrePotentielSuiviCA(btn){
       "&periode=" + encodeURIComponent(periode);
     const rep = await fetch(adresse, {method:"GET", redirect:"follow"});
     if(!rep.ok) throw new Error("réponse " + rep.status);
-    const j = await rep.json();
+    const brut = await rep.text();
+    let j = null;
+    try{ j = JSON.parse(brut); }
+    catch(e){
+      dire(/^\s*</.test(brut)
+        ? "Cette adresse renvoie une page web, pas des données : vérifiez le lien qui finit par /exec, et que le déploiement est ouvert à tout le monde."
+        : "Réponse illisible du Suivi CA.", "ko");
+      return;
+    }
     if(!j || !j.ok){
       const msg = (j && j.error && j.error.message) || "réponse inattendue";
       dire(/inconnu/i.test(msg) ? E.magasin + " n'est pas suivi dans le Suivi CA : saisie à la main."
@@ -2660,7 +2678,7 @@ async function reprendrePotentielSuiviCA(btn){
 
 function rendreAtterrissage(){
   const champUrl = document.getElementById("urlSuiviCA");
-  if(champUrl && champUrl.value !== (E.suiviUrl || "")) champUrl.value = E.suiviUrl || "";
+  if(champUrl && document.activeElement !== champUrl && champUrl.value !== urlSuiviCA()) champUrl.value = urlSuiviCA();
   const tb = document.getElementById("corpsAtterrissage");
   if(!tb) return;
   const note = document.getElementById("noteAtterrissage");
