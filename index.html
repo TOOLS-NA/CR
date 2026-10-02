@@ -333,6 +333,7 @@ h2{justify-content:flex-start}
     <div class="hactions">
       <button class="hbtn ghost" onclick="verrouiller()">Verrouiller</button>
       <button class="hbtn ghost" onclick="remiseAZero()">RAZ</button>
+      <button class="hbtn ghost" onclick="forcerMaj()" title="Recharger la dernière version publiée">MAJ</button>
       <button class="hbtn ghost" onclick="ouvrirMesCR()" title="Mes CR enregistrés dans ce navigateur">Mes CR</button>
       <label class="hbtn ghost" style="cursor:pointer" title="Ouvrir un CR depuis un fichier .json">
         Ouvrir
@@ -517,6 +518,18 @@ h2{justify-content:flex-start}
 </section>
 
 <section id="blocsControle"></section>
+
+<!-- 4 bis. COC COMMERCIAL -->
+<section id="blocCocCom">
+  <h2>COC commercial <span class="compte" id="compteCocCom"></span></h2>
+  <p class="sous">Actions du COC commercial, classées par indice à améliorer. Les indices en écart d'après les chiffres du mois sont signalés et proposés en premier.</p>
+  <div class="barre" style="margin-top:0">
+    <select id="indiceCocCom" style="max-width:420px" onchange="rendreCocComListe()"></select>
+    <button class="btn sec" onclick="ajouterToutCocCom(this)">Tout ajouter au plan</button>
+    <span class="etat" id="etatCocCom"></span>
+  </div>
+  <div id="listeCocCom" class="enrobe" style="padding:4px 0"></div>
+</section>
 
 <!-- 5. PLAN D'ACTION -->
 <section class="actions">
@@ -1244,7 +1257,7 @@ async function importerFichier(input, z){
   // la prévision du TSM se réapplique après chaque import : un export chargé
   // ensuite réécrirait sinon la colonne Prev
   reprendreTsm(); completerCalculs();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom();
   rendreAnalyse(); sauver();
 }
 
@@ -2161,7 +2174,7 @@ function integrerTable(table, z, et){
   et.className = "etat ok";
   et.textContent = detail;
   completerCalculs();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreAnalyse(); sauver();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendreAnalyse(); sauver();
 }
 
 /* ===== remise à zéro pour un nouveau compte rendu ===== */
@@ -2205,7 +2218,7 @@ function remiseAZero(){
     if(e){ e.className = "etat"; e.textContent = ""; }
   });
   majJauge(); majMots(); majMotsSynthese(); rendreDictees(); majApercuRestitution();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendrePA(); rendreAnalyse(); rendreFDR();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePA(); rendreAnalyse(); rendreFDR();
   sauver();
   etatMicro("Compte rendu vierge. Commencez par choisir le magasin et importer les fichiers.", "ok");
   if(window.scrollTo) window.scrollTo({top:0, behavior:"smooth"});
@@ -2227,7 +2240,7 @@ function viderChiffres(){
   E.potentiel = {mois:null, prestaMois:null, collabs:{}};
   E.prevExport = {}; E.moisPrev = null;
   E.sources = {};
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreAnalyse(); sauver();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendreAnalyse(); sauver();
 }
 function rendreSources(){
   const z = document.getElementById("sources");
@@ -3535,6 +3548,42 @@ function majZone(el, k){ E.zones[k] = el.value; sauver(); }
    parce qu'ils sont chiffrés. */
 const ORDRE_SOURCE = {potentiel:0, podium:1, oss:2, analyse:3, qs:4, coc:5, dictee:6, manuel:7};
 
+/* ===== thèmes du plan d'action =====
+   Les actions viennent de sources différentes — bilan qualité, points de contrôle
+   du COC, analyse chiffrée, dictée — mais parlent des mêmes sujets. On les range
+   sous un thème commun : la carte de fidélité du bilan qualité et celle du COC
+   se retrouvent ensemble. L'indicateur précis reste porté par chaque ligne. */
+const THEMES_PA = [
+  {nom:"Enjeux Podium",              re:/potentiel r[ée]seau|podium|volume |famille/i},
+  {nom:"Prise de commande OSS",      re:/\boss\b|one.?shot|prise de commande|portefeuille de commande|\bcdc\b|devis sign/i},
+  {nom:"DSC et feuilles de liaison", re:/\bdsc\b|feuilles? de liaison|\bfap\b/i},
+  {nom:"Base de données clients",    re:/\bbdd\b|fiche client|fiches en anomalie|\bx3\b|\bcrm\b|npai/i},
+  {nom:"Fidélité",                   re:/carte fid|fid[ée]lis|fid[ée]lit|wallet|\bcartes?\b|porteurs de carte/i},
+  {nom:"Téléphonie",                 re:/t[ée]l[ée]phon/i},
+  {nom:"Emails, C&C et commandes web", re:/email|c&c|click|collect|\bwts\b|\bvad\b/i},
+  {nom:"Satisfaction client",        re:/satis|recommand|google|verbatim|accueil|sqc|port\. manquant|avis client|irritant/i},
+  {nom:"Tenue du magasin et stock",  re:/propret|ext[ée]rieur|surface de vente|expo|implantation|facing|stock|inventaire|s[ée]curisation|b\.a\.b\.a|concept na/i},
+  {nom:"Rentabilité du point de vente", re:/masse salariale|heures disponibles|fourniture|sous.?trait|fppec|rentabilit/i},
+  {nom:"Prestation et atelier",      re:/presta|atelier|planning|interven|pose|\bor\b|mo\b/i},
+  {nom:"CA, marge et remises",       re:/ca r[ée]alis|ca du mois|ca accessoires|marge|remise|pmf|pmca|panier|prix|pr[ée]vision|rattrapage|atterrissage|clients distincts|synergie|d[ée]gradation tarifaire/i},
+  {nom:"Équipe et organisation",     re:/\brh\b|[ée]quipe|brief|formation|accompagnement|recrut|r[ée]union/i},
+  {nom:"Qualité de service",         re:/qualit[ée] de service|quali service|bilan qualit/i}   // le reste du bilan
+];
+const THEME_AUTRE = "Autres sujets";
+function themePA(l){
+  if(!l) return THEME_AUTRE;
+  const ind = String(l.indicateur || "");
+  const t1 = THEMES_PA.find(t => t.re.test(ind));
+  if(t1) return t1.nom;
+  const texte = ind + " " + String(l.constat || "") + " " + String(l.action || "");
+  const t2 = THEMES_PA.find(t => t.re.test(texte));
+  return t2 ? t2.nom : THEME_AUTRE;
+}
+function rangTheme(nom){
+  const i = THEMES_PA.findIndex(t => t.nom === nom);
+  return i === -1 ? THEMES_PA.length : i;
+}
+
 function signaturePA(l){
   return CADRE.champs.map(c => l[c.k] === undefined ? "" : String(l[c.k])).join("|");
 }
@@ -3670,12 +3719,172 @@ function synchroniserPA(){
   E.pa = E.pa.filter(l => !l.auto || l.sig !== signaturePA(l) || cles.has(l.origine));
   const presentes = new Set(E.pa.map(l => l.origine));
   auto.forEach(l => { if(!presentes.has(l.origine)) E.pa.push(l); });
-  E.pa.sort((a,b) => (a.ordre === undefined ? 9 : a.ordre) - (b.ordre === undefined ? 9 : b.ordre));
+  classerPA();
+}
+
+/* les sujets voisins se suivent : on classe par thème, puis par source à l'intérieur */
+function classerPA(){
+  E.pa.forEach((l,i) => { l._i = i; });
+  E.pa.sort((a,b) =>
+    rangTheme(themePA(a)) - rangTheme(themePA(b)) ||
+    (a.ordre === undefined ? 9 : a.ordre) - (b.ordre === undefined ? 9 : b.ordre) ||
+    a._i - b._i);
+  E.pa.forEach(l => { delete l._i; });
 }
 
 function preconisations(){ return E.pa; }
 
-/* ===== plan d'action ===== *//* ===== plan d'action ===== */
+/* ===== COC commercial =====
+   Le classeur COC porte, pour chaque indice à améliorer (CA ACC, marge, PMCA,
+   clients distincts…), les actions à mener, leur récurrence, le référent et le
+   document de référence. On ne les verse pas automatiquement au plan — il y en a
+   33 pour le seul CA ACC : l'appli signale les indices en écart d'après les
+   chiffres du mois, le Tribu Manager choisit les actions. */
+const COC_COM = {"CA ACC":[{"a":"Organiser des Formations client Energie deux fois par mois sur la période d'octobre à mai. Objectif de CA de 3 / 5 K€ + se démarquer de la concurrence locale + Création de DSC à suivre les semaines suivantes. Présence OMM si possible (à anticiper ). Recrutement en magasin + affichage tableau en sortie de caisse pour proposition systématique en caisse + Relance DSC / Devis en cours. Soutien campagne SMS possible (1x par mois) en accord avec son EC qui coordonne le lien au service CRM.","x":"Animation SV","t":"TPRM","r":"Deux fois par mois","c":"Coach Réseau/ BDD","d":"Process cadre de formation client Masterclass/ outil de présentation de formation Energie"},{"a":"Pour les magasins avec concession, organiser des Formations client Energie avec les clients qui vont être livrés de leur vdl pour prévoir \"Journée Energie\". Fréquence deux fois par mois sur la période d'octobre à mai. Création de DSC + satisfaction client. Présence OMM si possible (à anticiper). Recrutement en relance tél des listes de clients concession + soutien campagne E-mailing possible (1x par mois) en accord avec son CR qui coordonne le lien au service CRM.","x":"Animation SV","t":"TPRM","r":"Deux fois par mois","c":"Coach Réseau / BDD","d":"Process cadre de formation client / outil de présentation de formation Energie"},{"a":"Pour les magasins avec concession, organiser des Formations client Energie avec les clients ayant acheté un VDL dans les 24 derniers mois. Fréquence deux fois par mois sur la période d'octobre à mai. Objectif de CA de 3 / 5 K€ + se démarquer de la concurrence locale + Création de DSC + satisfaction client. Présence OMM si possible (à anticiper). Recrutement en relance tél des listes de clients concession + soutien campagne E-mailing possible (1x par mois) en accord avec son CR qui coordonne le lien au service CRM.","x":"Animation SV","t":"TPRM","r":"Deux fois par mois","c":"Coach Réseau / BDD","d":"Process cadre de formation client / outil de présentation de formation Energie"},{"a":"Mise en place d'une journée à thème mensuelle avec exposition extérieure, démonstration et mise en main de VAE / Montage, démontage de Auvents (gonflage - dégonflage), Formations Hivernage, départ…Recrutement en caisse avec possibilité de campagne de soutien SMS possible en coordination CR qui fait le lien avec service CRM.","x":"Animation SV","t":"TPRM","r":"Mensuellement","c":"Coach Réseau / BDD","d":"-"},{"a":"Je vérifie une x par semaine que les produits en expo soient mis en place et opérationnels. Je délègue à un collaborateur la vérification et la mise en opération des accessoires exposés ( TV en marche, machine à Kfé, ….). Rotation des TG, produits caisses optimiser. Je change au minima tous les 6 mois les produits exposés.","x":"Managérialement","t":"TPRM","r":"Quotidien","c":"Coach Réseau/Merchandising","d":"Fiches techniques Merchandising"},{"a":"Systématiser la vente d'EGT dés que les produits le permettent","x":"Managérialement","t":"TPRM","r":"Permanent","c":"","d":""},{"a":"Organiser des opérations visant à diagnostiquer le vdl du client pour détecter un entretien, un changement d'un accessoire existant sur le vdl","x":"Managérialement","t":"TPRM","r":"","c":"","d":"Fiche diagnostic et process lié (lancement 24ZR02) sur Intranet"},{"a":"Convertir les objectifs du mois en quantité de GMDR. Afficher ces objos sur Tableau blanc avec relevé journalier des réalisés / collaborateur mis en avant lors des briefs et réunion hebdomadaire","x":"Managérialement","t":"TPRM","r":"Mensuelle dès réception des objectifs M+1 par le CDGOP","c":"Coach Réseau/CDGOP","d":"TPRM / FUSION"},{"a":"Préparer (20 min) et dispenser (15 min) les briefs matinaux pour informer les collaborateurs des performances magasins et vendeur. Sensibiliser l'équipe et challenger les collaborateurs en mettant en avant les grosses ventes de la veille. Fixer les objos du jour, priorités, coordination et leviers à mettre en oeuvre sur la journée...","x":"Managérialement","t":"TPRM","r":"Quotidienne 8h45/9h00","c":"Coach Réseau","d":"PODIUM COLL /Classeur encadrement / Intranet DVA"},{"a":"Préparer (30 min) et dispenser (40 min) les réunions commerciales hebdomadaire pour mesurer les temps de passage des objectifs fixés individuellement sur ls principaux indices : CA /GMDR / PMF. Faire le lien au primes potentielles, reconnaitre le travail accompli, fixer les obejctifs, priorités, planning de la semaine à venir ainsi que les leviers à mettre en oeuvre (Déballes, PDM, sketch de vente, Relances, formation clients ...).","x":"Managérialement","t":"TPRM","r":"Hebdomadaire 12h/13h00 le vendredi","c":"Coach Réseau","d":"PODIUM COLL /Classeur encadrement / Intranet DVA"},{"a":"Optimisation, réorganisation du planning de pose en atelier sur la semaine suivante afin d'augmenter le nombre de pose effectuées grâce à augmentation du temps de travail du TA, recours au ST pour toute les poses à plus de 4 jours, mise en place de la méthode de planification NA.","x":"Managérialement","t":"TPRM","r":"Hebdomadaire le jeudi.","c":"Coach Réseau","d":"Méthode de planification NA / Tarifs et temps de pose / Planning Atelier magasin / Planning RH"},{"a":"Equiper chaque vendeur du nécessaire de vente (classeur, antisèche PVACC, état des stock gros produits...) chaque vendeur repart le soir après et seulement après avoir rangé son nécessaire de vente dans son casier/banette/étagère.","x":"Managérialement","t":"TPRM","r":"Permanent avec vérification journalière","c":"Coach Réseau","d":"Listing outils commerciaux NA (intranet NA) / Process outils d'aide à la vente"},{"a":"Mise en place du bon niveau d'agressivité commerciale (avec rappel en brief et réunion hebdo) : Au moins 2 débales cahier par jour et par VD.Création d’au moins une DSCM par jour et par vendeur. Relance d’au moins 2 contacts par jour et par vendeur. Mise en place et création d’une feuille de liaison / VDL pris en atelier. Vente d’au moins une carte fidélité par jour et par vendeur. Annonce systématique en début de déballe qu'une solution de financement sera possible.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":"PVACC / Classeur de vente / feuille de déballes / Feuille de liaison NA"},{"a":"Traitement du portefeuille de commande afin de : Relancer les clients pour lesquels la commande est réceptionnée. Relancer les appros pour réduire les délais de livraisons et/ou effectuer les intermags et/ou express nécessaires.","x":"Managérialement","t":"TPRM","r":"Hebdo avec chaque AC lors des ent ind + à réception du portefeuille de commande BO","c":"CDGOP","d":"Reporting Portefeuille de commande"},{"a":"Consulter l'agenda et organiser les Relances et le suivi des DSC Produits. Répertorier et Organiser les Relances de devis et/ou déballes en cours chez chaque collaborateur non encore enregistrées en DSC. Effectuer un reporting hebdo avec chacun pour échanger sur les scénarios de relances, RDV pris et/ou révision d'offre à prévoir.","x":"Managérialement","t":"TPRM","r":"Journalier","c":"Coach Réseau","d":"Planification DSC X3 / scénarios de relances / Classeur de vente / feuille de déballes.."},{"a":"Concernant les argumentaires produit : Préventivement pour éviter les effets tunnel ou curativement en cas de vente insuffisante, faire passer les quizz de vente sur les principales familles (auvent, energie, audiovisuel...) puis leur faire apprendre les argumentaires produits : catalogue + outil d'argu GMDR + fiche de pose correspondante.","x":"Managérialement","t":"TPRM","r":"Hebdomadairement (à réception du tdb des ventes par cat).","c":"Coach Réseau / OMM","d":"Quizz Produits - Book Argumentaires - Catalogue - Fiche de pose"},{"a":"Consacrer le temps nécessaire et suffisant à la montée en compétence de chaque collaborateur en fonction des ET constater dans les ventes par familles : Débriefer des déballes effectuées et/ou ventes réalisées. Effectuer 2x par semaine et par vendeur des sketch de vente, pour s'assurer de la connaissance des arguments et déroulé PVACC. Effectuer des PDM sur 50 % des déballes faites et/ou selon besoin par vendeur pour optimiser le taux de one shot. Déclencher des Formations/Remises à niveau arguments produits et/ou PVACC si besoin.","x":"Managérialement","t":"TPRM","r":"Permanent (80% du temps d'un DM).","c":"Coach Réseau","d":"Planning organisation hebdo DM / PVACC"},{"a":"Je consulte les factures non validées les lundis et jeudis. Je demande au créateur le pourquoi de la non validation. On établit ensemble la suite à donner à la facture. Si besoin on revoit le process de validation des factures.","x":"Managérialement","t":"TPRM","r":"lundi et jeudi de chaque semaine","c":"Coach Réseau / Service informatique","d":"Adonix X3"},{"a":"Je contrôle l'accueil des clients WTS et veille à ce qu'il y ait un découverte des besoins systématiquement. Veiller à consulter la boîte mail DM 3x par jour , les commandes WTS sous X3 et l'impression des cdc dans l'imprimante. Affecter un collaborateur par jour à cette veille. Veiller à ce le contenu du mail qui part vers le client soit correctement écrit et convivial (= image du magasin) et qu'il contienne le délai de disponibilité du produit en magasin.Répertorier et Relancer les Commandes non facturées et non allouées WTS. Transmettre aux collaborateurs concernés les cdc non facturées.","x":"Managérialement","t":"TPRM","r":"Quotidien","c":"Coach Réseau / BODVA / service BDD","d":"Process WTS / Charte accueil NA"},{"a":"Mettre en place 3 produits d’impulsion en caisse différent chaque semaine et animer l’équipe autour de l’effusion de ces produits.","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":""},{"a":"Veiller à ce que tous les collaborateurs sachent argumenter sur des facilités de paiement pour convaincre le client réticent au prix. Organiser des formations avec le BODVA si besoin. Identifier les points bloquants lors de l'argumentation pdt les sketch de vente et/ou débrief des déballes effectuées. Veiller à ce qu'il y ait d'afficher dans chaque zone des ILV avec exemple de financement.","x":"Managérialement","t":"TPRM","r":"Mensuellement (à réception du Tdb ventes et financement","c":"BODVA","d":"Reporting financement / Formation à distance BO"},{"a":"Je veille à l'approvisionnement notamment à ce qu'il y ait toujours des produits sur les broches. Rappel à l'équipe sur ce point 1x par semaine. J'applique strictement les process de gestion de stock y compris en y passant le temps suffisant et nécessaire chaque semaine selon le planning hebdo établi pour garantir l’adéquation entre le stock physique et le stock informatique tout en minimisant les broches vides.","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":"Process gestion de stock NA / réappro /"},{"a":"Indexer les primes des vendeurs en fonction des ventes de Gros produit et/ou application des minima commerciaux attendus : nombre de déballes, relances DSC… = Modification des sommes proposées par le BODVA suite échange avec CR.","x":"Managérialement","t":"TPRM","r":"Mensuellement","c":"DR / CDGOP","d":"FUSION / TAC mensuel / DOP"},{"a":"Avoir systématiquement une offre d’appel pour les GMDR : \" le 220 à bord pour 150 € ..\" (pdt 10 mois...) \" Suspension réglable pour 650 € \" \" …..\" Toute les GMDR se doivent d'avoir un prix d'appel résumant l'avantage clt et l'attrait du prix.","x":"Animation SV","t":"TPRM","r":"Permanent","c":"Coach Réseau / CRM","d":""},{"a":"Prévoir de stocker les principales références des familles de gros produits toute l'année pour les familles GMDR tout en organisant la mise en avant des produits à déstocker.","x":"Animation SV","t":"TPRM","r":"Hebdomadaire lors des commandes ACA","c":"Coach Réseau","d":"Process commandes et gestion de stock NA / ACA"},{"a":"Préparer pré-commande ZR, 1 mois avant la dite ZR dès réception des TDB du MP. Chaque ZR fait l'objet d'une réunion hebdo spécifique 1 semaine avant l'OP permettant d'expliquer la mécanique d'animation ZR, les offres les plus attrayantes et la stratégie commerciale par famille pour favoriser la montée en gamme. Piqure de rappel lors de la réunion hebdomadaire pdt la période ZR pour faire le point sur les stock en cours, vente effectuées et si nécessaire rectifier le tir / prévisions initiales et rappeler les prdts à déstocker en priorité.","x":"Managérialement","t":"TPRM","r":"Mensuellement","c":"Coach Réseau / MP","d":"TDB offre ZR / book ZR"},{"a":"Prépare et briefe l'équipe sur la future OP en organisant en amont les appro nécessaires pour disposer des prodts de l'offre en mag. Organise la préparation en affectant un ou plusieurs collaborateurs à la mep (com et produits ZR). Imprime et mets à disposition le book ZR. Prévois un listing des produits de substitution dans le cas où les produits de la ZR soient épuisés en cours de période.","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau / service MP","d":"TDB offre ZR / book ZR"},{"a":"Inciter les clients au parrainage par l’inscription en bas de facture de la mention nécessaire : x € de remise si prochain achat avant le … ? ou 50 € pour tous nouveau clients ramené.","x":"Animation Communication","t":"TPRM","r":"Mensuelle","c":"Coach Réseau / BODVA","d":""},{"a":"Indexer si nécessaire les PMA vendeurs au niveau d’atteinte des objectifs qualitatifs fixés et/ou à l’utilisation des outils.","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Back Office / DR","d":"DOP"},{"a":"En tant que DM et porteur de l'exigence, de l'ambition et de la coordination, je suis exemplaire dans l'accompagnement client, dans l’utilisation des outils, dans la réalisation de mon CA personnel et dans la recherche permanente de solution. Me positionner en relais efficace, tout en étant force de proposition, voir d’évolution..","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":"LDM DM"},{"a":"Fixer des objectifs journaliers et challenger les collaborateurs sur les ventes de Cartes de Fidélité pour déclencher des ventes sur produits à Prix Fidélité. Relayer Challenge en cours et animer les résultats à chaque brief.","x":"Managérialement","t":"TPRM","r":"Quotidien","c":"Coach Réseau / BODVA","d":"Reporting mensuel Cartes / Brochure Cartes / Argumentaires, Mémo Vendeurs"},{"a":"Organiser une tournée régulière des professionnels de ma zone pour créer et fluidifier le renvoi de clientèle : camping, carglass, feu vert, norauto, camping, aires de services, gardiennage…","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau","d":"FUSION au collaborateur"},{"a":"En tant que DM et porteur de l'exigence, de l'ambition et de la coordination, je suis exemplaire dans la vente de Gros Produits (GMDR), dans l’utilisation des outils, dans la réalisation de mon CA personnel et dans la recherche permanente de solution.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau / DR","d":"Feuille de mission DM NA"}],"CA PRESTATIONS":[{"a":"Réduction des ET par famille et développement des GMDR porteurs avec pose associée.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau / OMM / MKT DT","d":"Fusion"},{"a":"Veillez à l'application des régles de facturations NA liées aux poses Atelier: FO, FPPEC, MO…","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau / MKT DT","d":""},{"a":"Optimiser le planning Atelier pour réduire les temps \"vide\" et augmenter la productivité.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau / MKT DT","d":""},{"a":"Veillez à l'entretien et au niveau d'équipement nécessaire pour s'assurer la productivité maximale","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"MKT DT / ERDT","d":""},{"a":"Veillez à ce qu'une fiche de liaison soit réalisée par le TA après chaque prestation et que le lien soit fait avec le DM pour PDM à un AC.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"MKT DT","d":""},{"a":"Utilisez les médias et d'autres canaux de communication locaux pour informer les clients de votre service Atelier et des diagnostics gratuits. J'explore la publicité en ligne géolocalisée pour cibler les personnes dans ma région.","x":"Managérialement","t":"TPRM","r":"Mensuel","c":"Coach Réseau MKT / MKT DT","d":"Fiche diagnostic et process lié (lancement 24ZR02) sur Intranet"},{"a":"Assurez vous que votre équipe Atelier est formée et efficace dans toutes les poses. Si pas le cas inscrivez vos collaborateurs aux formations \"Geste Métier\"","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau / RH / MKT DT / ERDT","d":""},{"a":"Utilisez les retours des clients (Google, Questionnaire satisfaction…) pour améliorer vos services et les faire connaître.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau / MKT DT","d":""}],"CLIENTS DISTINCTS":[{"a":"J’entretien avec le bon niveau de rigueur ma BDD clients : systématiser la demande de l'adresse et/ou type de VDL et/ou tél, adresse mail aux clients relance mensuelle des listes de clients à requalifier, mettre en place et faire remplir les DPA à tous personne pour création en prospect si pas de passage en caisse.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"","d":""},{"a":"Demander le fichier des REMFID périmés et organiser campagne de rappel en proposant la validité de la REMFID sur une période courte (prise de rdv)","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau (TOAIS en dec 2023) / VASUM","d":""},{"a":"Je veille à ce qu'aucune personne ne sorte du magasin sans avoir une maj de sa fiche client, sans avoir démontré le moyen de télécharger le catalogue ou ZR, sans oublier de scanner le Catalogue distribué. Je vérifie avec la restitution qui est envoyé que l'application de la directive soit suivie par toute l'équipe (envoi mail du BO).","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau/ BODVA","d":"TDB Scan Catalogue"},{"a":"Je consulte l'évolution du suivi BDD toutes les semaines. J'encourage les collaborateurs qui ont réhaussé leur niveau d'exigence. Je distribue le fichier de requalification à l'équipe pour relance par tél client. Je pointe 1x par semaine avec du picking aléatoire une dizaine de factures pour vérifier la qualification de la base.","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau / OMM BDD Isdus","d":"TDB BDD - Fichier de requalification"},{"a":"J’affiche dans le bureau les indices de BDD / GOOGLE / cartes et autres indices qualitatifs afin de créer une émulation et rappeller à l'esprit de tous les objectifs, avec rappel du sens, à chaque brief.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"BODVA / service BDD","d":"Reporting Qualité / TDB BDD"},{"a":"Fixer des objectifs journaliers et challenger les collaborateurs sur les ventes de Cartes de Fidélité pour veiller à son trafic immédiat et à long terme. Relayer les challenges en cours.","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau / OMM","d":""},{"a":"Je pousse mes équipes à vendre le programme fidélité et à accompagner mes clients à mettre leur carte dans leur Wallet","x":"Animation SV","t":"TPRM","r":"","c":"","d":"COC Qualité de Service / Process Wallet"},{"a":"Je demande le fichier de mes clients des 3 derniers mois sans Cartes (PMF 150€) et je lance une campagne de rappels pour leur offrir la carte et le rappel des points fidélité non pris en compte les 3 derniers moi","x":"Managérialement","t":"TPRM","r":"Hebdomadaire 12h/13h00 le vendredi","c":"Coach Réseau / BODVA / service BDD","d":"Reporting mensuel Cartes / Brochure Cartes / Argumentaires, Mémo Vendeurs, FO avec OMM + Reporting Qualité / TDB BDD"},{"a":"J'optimise ma présence en ligne avec ma fiche Google My Business.J'anime (photos, films, rv….) et veille à la \"bonne santé\" de ma page Google et RS (voir Caisse à Outils Qualité de Service) en la consultant 1 jour 2. Je favorise ma notation google en demandant aux clients satisfait une note de 5 étoiles. Animer la page Google avec des photos, vidéo, annonce d'évènements… : Au moins 5 photos intérieur et 5 photos extérieur de son mag + Une vidéo sympa dynamique ensoleillée et orientée service / produits de 1min30 max + Une description succincte mais efficace du mag et ses services (250 caractères) + Des posts rédigés régulièrement en poussant des promos / soldes / ou encore best sellers du moment par ex + Message sur bas de facture incitant à enregistrer 5 Etoiles","x":"Animation Communication","t":"TPRM","r":"Mensuelle","c":"Coach Réseau / BODVA","d":"Reporting qualité / TDB verbatim client"},{"a":"Je briefe et débriefe l'équipe sur la démultiplication des 5 * sur ma page Google + retours notes et verbatim du Questionnaire Satisfaction pour sensibiliser et mettre en œuvre les mesures correctrices","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Je réagis au plus vite lorsque j'ai un commentaire négatif sur Page Google","x":"Animation Communication","t":"TPRM","r":"Quotidien","c":"","d":"Réponses Type Google My business"},{"a":"Prendre contact avec les clients ayant noté < 8 le Questionnaire Satisfaction Client pour comprendre leur mécontentement, avoir un discours rassurant et prendre les mesures correctives si besoin auprès des collaborateurs.","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau / BODVA","d":"TDB Restitution Questionnaires CRM"},{"a":"Je consulte mon Agenda DSC 1 fois par jour et je vérifie les relances faites par les collaborateur (et les miennes). J'insiste sur les DSC non relancées en répartissant la liste / collaborateur pour celles non traitées. Je recadre si pas fait en fin de semaine collectivement et individuellement.","x":"Managérialement","t":"TPRM","r":"Quotidien","c":"Coach Réseau / OMM","d":"X3 / Reporting DSC"},{"a":"Je veille à la qualité du discours de mes équipes lors des relances DSC.","x":"Animation SV","t":"TPRM","r":"","c":"","d":"Sketch / Script d'appels"},{"a":"Je fais respecter la charte d'accueil à mes équipes. Je veille avec mon équipe à ce que chaque client vive une expérience \"unique\" et personnalisée à chaque visite. Quizz Engagements Qualité de Service.","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau / OMM / BODVA","d":"Quizz Engagements Qualité de Service"},{"a":"J'intégre un message au bas de mes factures de façon à inciter le client à revenir: journée VAE, journée de FO Energie…","x":"Animation SV","t":"TPRM","r":"Trimestrielle","c":"Coach Réseau / BODVA","d":""},{"a":"Je contacte l’ensemble des professionnels de ma zone qui peuvent avoir un lien avec moi pour mise en place d’un renvoi de clientèle : Feu vert/Norauto/Carglass/Euromaster/Campings/Gardiennage...","x":"Animation Communication","t":"TPRM","r":"Trimestrielle","c":"Coach Réseau","d":"Internet"},{"a":"En relation avec le CRM, j'utilise les médias sociaux pour promouvoir mon magasin localement. Partagez des actualités, des offres spéciales et des événements.","x":"Animation Communication","t":"TPRM","r":"Quotidien","c":"","d":"Charte Google My Business / Réponses type"},{"a":"J'explore la publicité en ligne géolocalisée pour cibler les personnes dans ma région.","x":"Animation SV","t":"TPRM","r":"","c":"","d":""},{"a":"Programmes de parrainage : Encouragez les clients à recommander votre magasin à leurs amis en offrant des incitatifs, ce qui peut attirer de nouveaux clients et augmenter les ventes. J'encourage le bouche à oreille.","x":"Animation SV","t":"TPRM","r":"","c":"","d":""},{"a":"J'organise des événements spéciaux, des lancements de produits ou des journées à thème pour attirer l'attention et je communique via appels sortants, RS, Page Google, localement…","x":"Animation SV","t":"TPRM","r":"","c":"","d":""},{"a":"Je cherche à Collaborer avec d'autres entreprises/associations/animations locales pour des promotions croisées ou des événements conjoints. Je consacre ou je fais consacrer un collaborateur au réseautage local (recherche de salons, de partenariat…)","x":"Animation SV","t":"TPRM","r":"","c":"","d":""},{"a":"Je sponsorise des événements communautaires pour accroître la visibilité de mon magasin","x":"Animation SV","t":"TPRM","r":"","c":"","d":""},{"a":"Organiser l’accueil téléphonique selon le charte d’accueil établie : S'assurer de la connaissance par chaque membre de l'équipe et faire appliquer la Charte téléphonie Narbonne Accessoires (délai de décrochage, message accueil au décrochage, message dans boîte vocale actualisé) - L'afficher et la mettre à l'ordre du jour 1x par semaine des brief. Ecouter ou faire écouter la boîte vocale 2 x / jour. Recontacter dans la demi-journée les clients ayant laissés leur coordonnées.","x":"Managérialement","t":"TPRM","r":"Quotidien","c":"Coach Réseau/ BODVA","d":"Charte accueil NA"}],"DÉGRADATION TARIFAIRE":[{"a":"Vérifier la marge et la DT au collaborateur. Pointer avec le collaborateur en défaut et lui instaurer des régles en lien avec le montant des remises et la validation nécessaire auprès de vous.","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":"FUSION DT"},{"a":"Maximiser les approvisionnements au moment des ZR.","x":"Managérialement","t":"TPRM","r":"Ponctuellement","c":"Coach Réseau","d":""},{"a":"Je demande à l'équipe de me soumettre les autorisations de remise > 5%.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Je demande et vérifie que l'équipe propose en priorité un produit et/ou un financement plutôt qu'une remise.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""}],"HEURES DISPONIBLES (HORS KPI D'OBLIGATION)":[{"a":"J'identifie mes besoins en formation pour chacun de mes collaborateurs: X3, BDD, produits…. Et j'organise des sessions de formation (OMM, tuto, documents…en autonomie avec vérification des acquis ou avec un tiers expert)","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"J'organise des animations en SV (démonstration, jeux…), des formations clients…","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Je détache un collaborateur sur la recherche de réseautage local","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Appels sortants spécifiques","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Je détache un collaborateur sur l'observation de la concurrence locale pour en déterminer des plans d'action. Passer en revue la concurrence et identifiez des opportunités d'amélioration.","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Je détache un collaborateur pour identifier des moyens d'améliorer l'expérience client, que ce soit par des changements dans la disposition du magasin, l'ajout de services ou l'amélioration du service client (1h max avec restitution selon cadre établi)","x":"Managérialement","t":"TPRM","r":"","c":"","d":""}],"MARGE BRUTE":[{"a":"Eviter les encours et gérer les encours au plus vite.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Je sécurise les règlements et veille à la bonne pratique de mes collaborateurs pour tout encaissement","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":"Doc listant les types de règlement autorisés"},{"a":"Préparer et réaliser les inventaires selon les process établis","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":"Procédure inventaire + bonnes pratiques sur intranet"},{"a":"Mettez en place des systèmes de sécurité pour minimiser les pertes dues au vol. Surveillez les causes des pertes et prenez des mesures pour les réduire","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Mettez en avant les produits en déstockage et retourner de façon régulière les produits invendables à la centrale. Aucun stock mort en réserve.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Veillez à l'application des process par l'équipe sous X3 en lien direct avec les stocks","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":"Formation X3 sur intranet"},{"a":"Veillez à la vérification des approvisionnements (chaque produit est vérifié comme étant conforme à la commercialisation), l'enregistrement sous X3 et le déclenchement des CQC1","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Veillez à suivre le traitement des CQC1","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Veillez à suivre le retour régulier des kitbox","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Je pousse les financements > 3 000€ pour bénéficier des commissionnements Cofidis. Je veille en // aux utilisations des financements sans frais client proposées par mes collaborateurs pour limiter les couts. Je veille à ce que mes collaborateurs ne cumulent pas remise et financement sans frais. Je m'assure que mes collaborateurs sachent comment procéder et soient conscients du cout du financement ou des gains commissionnements.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Je fais un point régulier avec mon CR sur l'évolution de mes collaborateurs pour piloter au plus serré ma MS","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""}],"MARGE BRUTE SPE. ATELIER":[{"a":"Veillez à la tenue des stocks Outillage en mettant en place des inventaires tournants et en responsabilisant le CA / TA","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau / MKT DT","d":""},{"a":"Contrôle régulier de la gestion des Fournitures Atelier","x":"Managérialement","t":"TPRM","r":"Mensuel","c":"Coach Réseau / MKT DT","d":""}],"MARGE COMMERCIALE":[{"a":"Mise en place d'un plan d'entretien sur la SV par Collaborateur pour développer les achats d'impulsion et optimiser le mix produit. Equiper chaques vendeurs des outils nécéssaire au plein (gestion de stock) au propre (facing et nettoyage) au prix (un produit un prix).","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Je crée des bonnes affaires à ne pas rater qui génère de l’achat d’impulsion. Je les positionne en caisse, en tête de gondole, à l'entrée du magasin.","x":"Animation SV","t":"TPRM","r":"Permanent","c":"Coach Réseau/Merchandising","d":""},{"a":"Surveillez attentivement les niveaux de stocks pour éviter les surplus et les ruptures. Traiter quotidienement les SORTATT et application de la procédure de la gestion des stocks.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Profitez des opérations mkt pour commander les produits dont le tarif d'achat est en baisse","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Je suis méticuleusement les remises faites par mes collaborateurs et les informe des bonnes pratiques.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"","d":"Reporting DT"},{"a":"Identifiez les produits à plus forte marge et mettez-les en avant. Je m'assure que mes collaborateurs orientent leur vente vers ces produits.","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Veiller à ce que les collaborateurs utilisent les remises \"officielles\" et transmises par le mkt","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Veiller à anticiper les SQC pour éviter des clients insatisfaits et de potentiels couts ou remboursements","x":"Managérialement","t":"TPRM","r":"","c":"","d":""}],"MARGE COMMERCIALE SPE. ATELIER":[{"a":"Si sous-traitance: appliquée la règle qui est? x1,2 du montant HT facturé","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau / MKT DT","d":"Dossier sous-traitance"}],"MASSE SALARIALE":[{"a":"Je veille à une bonne cohérence de ma planification Magasin et Atelier. Horaires de travail et CP ajustés pour répondre aux fluctuations de la charge de travail. Je veille à l'acceptation ou pas des heures supplémentaires. Je suis tous les mois le compteur individuel de l'annualisation pour éviter en fin d'année civile de devoir soit régler des heures supplémentaires soit donner des récup. pénalisant la productivité en magasin.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Je connais mon prévisionnel sur l'exercice en terme de nombre de collaborateurs Magasin et Atelier.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Je fais en sorte de fidéliser mes \"bons\" collaborateurs. Je suis à l'écoute, ouvert à la discussion et ayez un discours transparent sur les évolutions ou pas. Je fais en sorte de créer un environnement de travail positif et motivant pour l'équipe.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":"COC RH Fidélisation des collaborateurs"},{"a":"Je suis le plan d'intégration des nouveaux et fais en sorte de les accompagner selon le plan établi (rdv formation, contenu formation que je dois lui donner)","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Je prévois des formations pour améliorer les compétences de mes collaborateurs et leur productivité vs leur coefficient.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Je connais la MS de chacun de mes collaborateurs pour optimiser les tâches de chacun. Productivité en fonction du cout de chacun.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Encouragez la polyvalence pour permettre à vos collaborateurs d'avoir plusieurs rôles (tâches courantes et argumentaires produit)","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":"Brief hebdo"},{"a":"Surveillez les performances individuelles et SE et révisez si besoin les évolutions","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Alignez les compétences des collaborateurs avec les besoins en magasin. Veillez à identifier à chaque point individuel avec vos collaborateurs leur souhait et mettre en évidence leur perf vs leurs attendus pour garder une pression sur leur SE/SF.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"En coordination avec votre CR, ajustez les effectifs en fonction des fluctuations d'activité, des résultats commerciaux projetés et des opérations commerciales.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Veillez à la composition des équipes des salons régionaux vs drivers CA","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"","c":"","d":""},{"a":"Veillez à vous poser tous les mois (1h) sur l'organisation du travail (le votre et celui de votre équipe) pour être en mode proactif et s'assurer que vous maintenez un rythme de productivité dans les attendus. Requalibrer si besoin l'organisation, les tâches et poste sur le mois à venir. Réorganisez le temps de travail.","x":"Gestion-Rentabilité du PDV","t":"TPRM","r":"Mensuel","c":"CR","d":"Planning équipe type"}],"PMCA":[{"a":"Etablir un plan d’entretien, affecter les zones de magasin par collaborateur en les équipant du matériel et des réflexes nécessaires au maintien du bon niveau de présentation de SV pour une SV tenue, achalandée et vendeuse.Je fais en sorte que tous mes produits soient étiquetés. J’anime d’un point de vu merchandising mon magasin pour lui donner ma « touch » dans le respect du concept NA.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau/ Service Merchandising","d":"Plan merch magasin"},{"a":"Maintenir en permanence l’équipe dans le bon niveau de coordination en maintenant le bon niveau de tension pour que tous les clients soient accompagnés, la charte d’accueil respectée et qu’aucun client ne puisse sortir du magasin sans catalogue / MAJ, création BDD …","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":"Planning hebdo orga DM / Charte accueil NA"},{"a":"Veiller à ce que tous les clients qui entrent dans le magasin soient accueillis et pris en charge. Contrôler et recadrer l'équipe ou le collaborateur si besoin immédiatement en prenant l'exemple du moment.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Mettre en place 3 produits d’impulsion en caisse différent chaque semaine et animer l’équipe autour de l’effusion de ces produits.","x":"Animation SV","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":""},{"a":"Développer les achats d'impulsion par la qualité de présentation et d'approvisionnement de la SV (PPP)","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Je veille à l'approvisionnement notamment à ce qu'il y ait toujours des produits sur les broches. Rappel à l'équipe sur ce point 1x par semaine. J'applique strictement les process de gestion de stock y compris en y passant le temps suffisant et nécessaire chaque semaine selon le planning hebdo établi pour garantir l’adéquation entre le stock physique et le stock informatique tout en minimisant les broches vides.","x":"Animation SV","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":"Process gestion de stock NA / réappro /"},{"a":"J’optimise mon réappro et ma tenue de surface pour développer les achats d'impulsion.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Je crée des bonnes affaires à ne pas rater qui génère de l’achat d’impulsion. Je les positionne en caisse, en tête de gondole, à l'entrée du magasin.","x":"Animation SV","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Je pousse les équipes à vendre des produits complémentaires et/ou additionnels et/ou premium en leur demandant de proposer systématiquement le produit adjacent au produit du panier client (produit d'entretien par ex) ou en en leur demandant de proposer systématiquement le produit plus haut de gamme. Je leur fixe un produit complémentaire toutes les 2 factures et je vérifie qu'ils connaissent les ventes additionnelles en lien avec les produits principaux","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":"Catalogue / Fiche produits /Quizz"},{"a":"Je vérifie que j'ai dans mon magasin les produits complémentaires qui sont nécessaires tous les mois. J'établis une commande ACA si besoin.","x":"Animation SV","t":"TPRM","r":"Mensuelle","c":"Coach Réseau","d":""},{"a":"Je prépare des \"packs\" / lots de produits pour inciter aux produits complémentaires ou pour déstocker.","x":"Animation SV","t":"TPRM","r":"Mensuelle","c":"Coach Réseau","d":""},{"a":"Affichage de PLV dédiée à des produits de compléments de type Consommable (l'indispensable à chaque visite en magasin)","x":"Animation SV","t":"TPRM","r":"Mensuelle","c":"Coach Réseau/ PAO","d":""},{"a":"Campagne d’Email/SMS/Appel téléphonique en lien avec des produits complémentaires suite à achat d’un produit il y a x mois (du type une annexe pour un achat d’un auvent il y a 3 mois)","x":"Animation Communication","t":"TPRM","r":"Mensuelle","c":"Coach Réseau / BDD / BODVA pour extraction","d":""},{"a":"Suivi des ventes par Catégorie Produit toutes les semaines. Identifier les catégories faiblement représentées par collaborateur, en informer l'équipe et suivre/contrôler le ou les collaborateurs 1x par semaine minimum sur les produits en question. Déclencher des FO si nécessaire. Valoriser les collaborateurs qui obtiennent de bonnes performances dans certaines catégories lors des briefs. (conf vente CA accessoires gros produits)","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":"FUSION"},{"a":"Veiller à ce que tous les collaborateurs sachent argumenter sur des facilités de paiement pour déclencher des ventes complémentaires ou des montées en gamme. Organiser des FO avec le BODVA si besoin et identifier les points bloquants lors de l'argumentation. (conf CA accessoires gros produits)","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau /BODVA","d":"Quizz Financement / Argumentaires Financement"},{"a":"Indexer les primes des vendeurs en fonction des niveaux de PMF réalisés","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau","d":""},{"a":"Animer l'équipe autour du PMF (ex surface à tenir par les collègues si meilleur PMF de la semaine...)","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":""},{"a":"Je pousse les équipes à fidéliser les clients via la carte de fidélité et la mise au Wallet car un Porteur de carte me rapporte 283€ de gain de PMCA vs un Non Porteur","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Je fais appliquer la découverte de la connaissance du client et de sa pratique pour pour personnaliser les offres et recommandations. Les suggestions personnalisées peuvent inciter les clients à ajouter plus d'articles à leur panier.","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"J'organise des Ventes Flash et je mets en avant (affichage et discours) les dates des promotions en cours pour créer un sentiment d'urgence pour inciter les clients à acheter plus et maintenant.","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Animer l'équipe autour du one ref (ex surface à tenir par les collègues si + bas one ref de la semaine...)","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":""},{"a":"Présence DM en SV afin de coordonner l'équipe et d'assurer l'accompagnement de chaques clients","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Je connais le Catalogue et organise des tests à chaque réunion hebdomadaire avec l'équipe pour m'assurer de leur connaissance sur la majorité des produits (une thématique produit par réunion hebdomadaire). J'identifie les lacunes et j'accompagne dans la découverte de produits les collaborateurs qui ont des carences.","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau","d":""},{"a":"Améliorez l'expérience d'achat en magasin, en proposant des démonstrations, des conseils personnalisés et un environnement agréable qui encourage les clients à explorer davantage.","x":"Animation SV","t":"TPRM","r":"","c":"Coach Réseau / OMM","d":"Cadre Masterclass, RDV expert,"},{"a":"Je fais pointer à un collaborateur tous les lundis les produits en magasin / l'état des réappro pour vérifier si concordance informatique / physique. 1 x par semaine.","x":"Managérialement","t":"TPRM","r":"Hebdomadaire","c":"Coach Réseau","d":""},{"a":"Je veille à la prise en charge des clients WTS: information transmise aux clients par mail et tél sur le suivi de sa cdc, accueil et découverte des besoins lors du retrait de la cdc WTS pour capitaliser et tenter des ventes complémentaires;","x":"Managérialement","t":"TPRM","r":"","c":"","d":""},{"a":"Je consulte l'agenda DSC tous les jours. Je vérifie que les DSC soient traitées dans les temps et efficacement et distribue celles non traitées. Je vérifie le taux de transformation des DSC. Dans le cas où le taux est < 30%, je briefe et forme sur les relances à l'aide des scripts dédiés.","x":"Managérialement","t":"TPRM","r":"Quotidien","c":"Coach Réseau / BODVA","d":"Agenda DSC X3 / Scénarios de relance"}],"SYNERGIE":[{"a":"Analyser par collaborateur le type de produits vendus et personnaliser les FO produits axés sur les accessoires à poser. Valider avec le Quizz Presta.","x":"Managérialement","t":"TPRM","r":"Mensuelle","c":"Coach Réseau","d":"FUSION au collaborateur"},{"a":"Je veille à l'application de la méthode de facturation Atelier: FPPEC, Forfait, MOPAPFA, facturation nettoyage, facturation démontage...","x":"Managérialement","t":"TPRM","r":"Quotidienne","c":"Coach Réseau/BODVA","d":"Adonix X3"},{"a":"Vérifier que chaque collaborateur connait les avantages PP9 liés à la Presta. Quizz Presta 1x/trim","x":"Managérialement","t":"TPRM","r":"Trimestrielle","c":"Coach Réseau","d":"Quizz Prestations"},{"a":"Je mets en place et veille à l'application de la méthode de planification Atelier tous les jours.","x":"Managérialement","t":"TPRM","r":"Quotidienne","c":"Coach Réseau","d":"Planning Prestations"},{"a":"Contrôler la qualité de pose pour éviter tout écueil de façon ponctuelle à chaque chantier","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":"Fiche de pose / Check list de pose"},{"a":"Veiller à ce que les collaborateurs informent les clients sur les Entretiens de leur accessoires déjà possédés.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":"Fiche d'entretien / fiche de pose"},{"a":"Je fais appliquer par chaque TA la compléture de la fiche de liaison et le PDM à un AC.","x":"Managérialement","t":"TPRM","r":"Permanent","c":"","d":""},{"a":"Je fais déposer systématiquement par le technicien atelier/AC une étiquette sur accessoires dans le vdl du client avec la date de révision lors de ses passages en atelier ou lors d'une visite du vdl lors d'une découverte des besoins.","x":"Animation SV","t":"TPRM","r":"Permanent","c":"Coach Réseau","d":""}],"CA PRESTATIONS HORS SOUS TRAITANT":[{"a":"Ajuster le planning des TA en fonction de l'activité et des travaux programmés à S+1/2/3","x":"Gestion-Rentabilité du PDV","t":"TPRA","r":"Permanent","c":"MKT DT / Coach Réseau","d":"Planning Prestations"}],"COUT SOUS TRAITANCE":[{"a":"Inscrire TA aux GM (défaut compétence sur GMDR) pour apprentissage ou perfectionnement","x":"Managérialement","t":"TPRA","r":"Ponctuellement","c":"MKT DT / ERDT","d":""},{"a":"Je vérifie que mon planning est optimisé et que les temps de pose sont respectés par mes TA","x":"","t":"TPRA","r":"","c":"","d":""}],"TAUX MARGE SOUS TRAITANCE":[{"a":"Je fais appliquer le process de facturation de la sous-traitance","x":"Managérialement","t":"TPRA","r":"Permanent","c":"MKT DT / Coach Réseau","d":"Mémo DM sous-traitance"}],"FPPEC":[{"a":"Faire point commercial avec les AC pour application immédiate de la réf; FPPEC 2 pour chaque facturation comprenant de la MO","x":"Managérialement","t":"TPRA","r":"Permanent","c":"Coach Réseau","d":""}],"FOURNITURES ATELIER":[{"a":"Je verrouille la communication entre les AC et TA lors des faisabilités afin d'ajuster les besoins réels en fournitures atelier et la part comprise dans le forfait initial, auquel cas je rajoute la MOPAPFA.","x":"Managérialement","t":"TPRA","r":"Permanent","c":"MKT DT","d":""},{"a":"Je fais du picking au hasard sur les commandes ou factures en cours pour vérifier l'application de la directive; Si je constate un défaut, je consulte l'AC et le TA concernés pour éviter que ca se reproduise.","x":"Gestion-Rentabilité du PDV","t":"TPRA","r":"Hebdomadaire","c":"MKT DT","d":""},{"a":"Je m'assure de valider les commandes de FA et la cohérence avec les poses à venir (conjointement avec le TA).","x":"Gestion-Rentabilité du PDV","t":"TPRA","r":"Permanent","c":"MKT DT","d":""}],"CHIFFRE D AFFAIRE MAIN D ŒUVRE (MO)":[{"a":"Je vérifie l'optimisation du planning","x":"Gestion-Rentabilité du PDV","t":"TPRA","r":"Permanent","c":"Coach Réseau","d":""},{"a":"Je vérifie le temps passé par mon/mes TA sur les poses précédentes. Est-ce que le temps de pose est conforme aux attendus. Si ce n'est pas le cas j'identifie si c'est un manque de compétences et donc un besoin en formation ou si c'est un problème de savoir-être ou motivation ou relationnel. Je recadre par un entretien individuel.","x":"Managérialement","t":"TPRA","r":"Permanent","c":"Coach Réseau","d":"Fiche des Formations Techniques. Fiche d'entretien individuel"}],"MARGE BRUTE TPRA CEX":[{"a":"Je contrôle chaque facture de prestataires ainsi que l'outillage et les fournitures et je les responsabilise sur le soin qu'il porte à leur outils ainsi qu'à l'utilisation inutile de fournitures.","x":"Managérialement","t":"TPRA","r":"Hebdomadaire","c":"MKT DT / ERDT / Coach Réseau","d":""},{"a":"Inscrire TA aux GM (défaut compétence sur GMDR) pour apprentissage ou perfectionnement pour limiter la Sous Traitance","x":"Managérialement","t":"TPRA","r":"Hebdomadaire","c":"MKT DT / ERDT / Coach Réseau","d":"Fiche des Formations Techniques."}]};
+const COC_COM_LIB = {
+  "CA ACC":"CA accessoires", "CA PRESTATIONS":"CA prestations",
+  "CA PRESTATIONS HORS SOUS TRAITANT":"CA prestations hors sous-traitance",
+  "CHIFFRE D AFFAIRE MAIN D ŒUVRE (MO)":"CA main d'œuvre",
+  "CLIENTS DISTINCTS":"Clients distincts", "DÉGRADATION TARIFAIRE":"Dégradation tarifaire",
+  "HEURES DISPONIBLES (HORS KPI D'OBLIGATION)":"Heures disponibles",
+  "MARGE BRUTE":"Marge brute", "MARGE BRUTE SPE. ATELIER":"Marge brute atelier",
+  "MARGE BRUTE TPRA CEX":"Marge brute TPRA", "MARGE COMMERCIALE":"Marge commerciale",
+  "MARGE COMMERCIALE SPE. ATELIER":"Marge commerciale atelier",
+  "MASSE SALARIALE":"Masse salariale", "PMCA":"PMCA, panier moyen",
+  "SYNERGIE":"Synergie accessoires / prestation", "COUT SOUS TRAITANCE":"Coût sous-traitance",
+  "TAUX MARGE SOUS TRAITANCE":"Taux de marge sous-traitance",
+  "FOURNITURES ATELIER":"Fournitures atelier", "FPPEC":"FPPEC"
+};
+function libCocCom(k){ return COC_COM_LIB[k] || (k.charAt(0) + k.slice(1).toLowerCase()); }
+
+/* indices en écart, déduits des chiffres déjà importés */
+function indicesCocComEnEcart(){
+  const g = (b,k,c) => (b && b[k]) ? b[k][c] : null;
+  const out = {};
+  const poser = (cle, constat) => { if(COC_COM[cle] && !out[cle]) out[cle] = constat; };
+
+  const eAccPrev = ecart(g(E.mois,"ca","real"), g(E.mois,"ca","prev"));
+  const eAccN1   = ecart(g(E.mois,"ca","real"), g(E.mois,"ca","n1"));
+  if(eAccPrev !== null && eAccPrev <= -S_VIGIL)
+    poser("CA ACC", "CA accessoires à " + fmtEcart(eAccPrev) + " de la prévision du mois.");
+  else if(eAccN1 !== null && eAccN1 <= -S_VIGIL)
+    poser("CA ACC", "CA accessoires à " + fmtEcart(eAccN1) + " sur N-1.");
+
+  const ePrestaN1 = ecart(g(E.prestaMois,"ca","real"), g(E.prestaMois,"ca","n1"));
+  const ePrestaPrev = ecart(g(E.prestaMois,"ca","real"), g(E.prestaMois,"ca","prev"));
+  if((ePrestaPrev !== null && ePrestaPrev <= -S_VIGIL) || (ePrestaN1 !== null && ePrestaN1 <= -S_VIGIL))
+    poser("CA PRESTATIONS", "CA prestation à " +
+      fmtEcart(ePrestaPrev !== null ? ePrestaPrev : ePrestaN1) +
+      (ePrestaPrev !== null ? " de la prévision du mois." : " sur N-1."));
+
+  const tx = g(E.mois,"tx","real"), txN1 = g(E.mois,"tx","n1");
+  if(tx !== null && txN1 !== null && (txN1 - tx) >= 0.005)
+    poser("MARGE BRUTE", "Taux de marge à " + fmt(tx,"pct") + " contre " + fmt(txN1,"pct") + " l'an dernier.");
+
+  const pos = positionReseau("acc");
+  if(pos && pos.txR !== null && pos.txRReseau !== null && (pos.txR - pos.txRReseau) >= 0.01)
+    poser("DÉGRADATION TARIFAIRE", "Taux de remise à " + fmt(pos.txR,"pct") +
+      " contre " + fmt(pos.txRReseau,"pct") + " pour le réseau.");
+
+  const ePmf = ecart(g(E.mois,"pmf","real"), g(E.mois,"pmf","n1"));
+  if(ePmf !== null && ePmf <= -S_VIGIL)
+    poser("PMCA", "Panier moyen à " + fmtEcart(ePmf) + " sur N-1.");
+
+  const eFact = ecart(g(E.mois,"fact","real"), g(E.mois,"fact","n1"));
+  if(eFact !== null && eFact <= -S_VIGIL)
+    poser("CLIENTS DISTINCTS", "Nombre de factures à " + fmtEcart(eFact) + " sur N-1.");
+
+  // synergie : part de la prestation dans le CA du magasin, comparée au réseau
+  const caAcc = g(E.mois,"ca","real"), caPresta = g(E.prestaMois,"ca","real");
+  if(caAcc && caPresta !== null && E.reseau.acc && E.reseau.presta){
+    const integres = new Set(MAGASINS.map(m => codeCanonique(m)));
+    const som = (liste) => liste.filter(s => integres.has(s.code))
+      .reduce((n,s) => n + ((s.ca && s.ca.real) || 0), 0);
+    const refAcc = som(E.reseau.acc), refPresta = som(E.reseau.presta);
+    if(refAcc && refPresta){
+      const moi = caPresta / caAcc, ref = refPresta / refAcc;
+      if(moi < ref * 0.85)
+        poser("SYNERGIE", "La prestation pèse " + fmt(moi,"pct") + " du CA accessoires, contre " +
+          fmt(ref,"pct") + " pour le réseau.");
+    }
+  }
+  return out;
+}
+
+function rendreCocCom(){
+  const sel = document.getElementById("indiceCocCom");
+  if(!sel) return;
+  const ecarts = indicesCocComEnEcart();
+  const cles = Object.keys(COC_COM).sort((a,b) => {
+    const ea = ecarts[a] ? 0 : 1, eb = ecarts[b] ? 0 : 1;
+    return ea - eb || libCocCom(a).localeCompare(libCocCom(b));
+  });
+  const choisi = sel.value && COC_COM[sel.value] ? sel.value : cles[0];
+  sel.innerHTML = cles.map(k => "<option value='" + esc(k) + "'" + (k === choisi ? " selected" : "") + ">" +
+    (ecarts[k] ? "⚠ " : "") + esc(libCocCom(k)) + " (" + COC_COM[k].length + ")</option>").join("");
+  const nb = Object.keys(ecarts).length;
+  const t = document.getElementById("compteCocCom");
+  if(t) t.textContent = nb ? nb + " indice" + (nb>1?"s":"") + " en écart" : "";
+  rendreCocComListe();
+}
+function rendreCocComListe(){
+  const sel = document.getElementById("indiceCocCom"), z = document.getElementById("listeCocCom");
+  if(!sel || !z) return;
+  const cle = sel.value, actions = COC_COM[cle] || [];
+  const constat = indicesCocComEnEcart()[cle];
+  const dedans = new Set(E.pa.map(l => l.origine));
+  z.innerHTML =
+    (constat ? "<p class='sous alerteNote' style='margin:8px 12px'>" + esc(constat) + "</p>" : "") +
+    actions.map((a,i) => {
+      const marque = "coccom:" + cle + ":" + i;
+      const bas = [a.r, a.c, a.d].filter(x => x && x !== "-").join("  ·  ");
+      return "<div class='point' style='margin:6px 12px'>" +
+        "<div class='nom'>" + esc(a.a) + "</div>" +
+        (bas ? "<div class='second'>" + esc(bas) + "</div>" : "") +
+        "<div style='margin-top:6px'><button class='btn sec' " +
+          (dedans.has(marque) ? "disabled>Déjà au plan" : "onclick=\"ajouterCocCom('" + esc(cle) + "'," + i + ",this)\">Ajouter au plan") +
+        "</button>" + (a.x ? " <span class='second'>" + esc(a.x) + "</span>" : "") + "</div></div>";
+    }).join("") || "<p class='vide'>Aucune action pour cet indice.</p>";
+}
+function ligneCocCom(cle, i){
+  const a = (COC_COM[cle] || [])[i];
+  if(!a) return null;
+  const constat = indicesCocComEnEcart()[cle] || ("COC commercial — " + libCocCom(cle));
+  return {
+    constat: constat,
+    action: a.a + (a.r ? " (" + a.r + ")" : ""),
+    responsable: directeurMagasin() || "DM",
+    echeance: echeanceDefaut(),
+    indicateur: libCocCom(cle),
+    priorite: "",
+    source: "coc", ordre: ORDRE_SOURCE.coc,
+    origine: "coccom:" + cle + ":" + i
+  };
+}
+function ajouterCocCom(cle, i, btn){
+  const l = ligneCocCom(cle, i);
+  if(!l || E.pa.some(x => x.origine === l.origine)) return;
+  E.pa.push(l);
+  classerPA(); rendrePA(); rendreCocComListe(); sauver();
+  const et = document.getElementById("etatCocCom");
+  if(et){ et.className = "etat ok"; et.textContent = "Action ajoutée au plan."; }
+}
+function ajouterToutCocCom(btn){
+  const sel = document.getElementById("indiceCocCom");
+  if(!sel) return;
+  const cle = sel.value, actions = COC_COM[cle] || [];
+  if(!confirm("Ajouter les " + actions.length + " actions de « " + libCocCom(cle) + " » au plan d'action ?")) return;
+  let n = 0;
+  actions.forEach((a,i) => {
+    const l = ligneCocCom(cle, i);
+    if(l && !E.pa.some(x => x.origine === l.origine)){ E.pa.push(l); n++; }
+  });
+  classerPA(); rendrePA(); rendreCocComListe(); sauver();
+  const et = document.getElementById("etatCocCom");
+  if(et){ et.className = "etat ok"; et.textContent = n + " action" + (n>1?"s":"") + " ajoutée" + (n>1?"s":"") + " au plan."; }
+}
+
+/* ===== plan d'action ===== */
 function echeanceDefaut(){
   // la trame demande un plan d'action sur les deux mois suivants
   const base = E.date ? new Date(E.date) : new Date();
@@ -3708,14 +3917,35 @@ function insererCoc(cle, constat){
 }
 function indicateurPour(p){
   const t = p.titre.toLowerCase();
+  if(/qualit[ée] de service|quali service/.test(t)) return "Qualité de service";
   if(t.includes("flux")) return "Nb factures";
   if(t.includes("panier")) return "PMF";
   if(t.includes("marge")) return "Tx marge PR";
-  if(t.includes("prestation")) return "CA prestation";
+  if(t.includes("prestation") || t.includes("atelier")) return "CA prestation";
   if(t.includes("stock")) return "Solde stock";
-  if(t.includes("ca")) return "CA réalisé";
+  if(/\bca\b/.test(t)) return "CA réalisé";     // « indicateurs » contient « ca » : on exige le mot entier
   return "Retour au vert";
 }
+/* bouton MAJ : vide le cache du service worker et recharge la dernière version publiée */
+async function forcerMaj(){
+  if(!confirm("Recharger la dernière version de l'appli ?\n\nLe compte rendu en cours est conservé.")) return;
+  try{
+    if(navigator.serviceWorker){
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+  }catch(e){}
+  try{
+    if(window.caches){
+      const noms = await caches.keys();
+      await Promise.all(noms.map(n => caches.delete(n)));
+    }
+  }catch(e){}
+  const p = new URLSearchParams(location.search);
+  p.set("v", Date.now());
+  location.replace(location.pathname + "?" + p.toString());
+}
+
 function rendrePA(){
   const th = document.getElementById("entetePA");
   if(th) th.innerHTML = "<tr>" +
@@ -4212,23 +4442,22 @@ function composerRestitution(){
   L.push("PLAN D'ACTION SUR LES DEUX MOIS");
   const prec = preconisations();
   if(prec.length){
-    // Grouper par indicateur pour meilleure lisibilité
-    const groupes = {};
-    const ordreThemes = [];  // conserve l'ordre d'apparition
+    // un thème = un bloc, quelle que soit la source de l'action
+    const groupes = {}, ordreThemes = [];
     prec.forEach(l => {
-      const theme = (l.indicateur || "Actions générales").trim() || "Actions générales";
+      const theme = themePA(l);
       if(!groupes[theme]){ groupes[theme] = []; ordreThemes.push(theme); }
       groupes[theme].push(l);
     });
-    // Mettre "Actions générales" à la fin si présent
-    const idx = ordreThemes.indexOf("Actions générales");
-    if(idx > -1){ ordreThemes.splice(idx, 1); ordreThemes.push("Actions générales"); }
+    ordreThemes.sort((a,b) => rangTheme(a) - rangTheme(b));
 
     ordreThemes.forEach(theme => {
       L.push("");
       L.push(theme);
       groupes[theme].forEach(l => {
         const q = [];
+        if(l.indicateur && !new RegExp("^" + l.indicateur.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "i").test(theme))
+          q.push(l.indicateur);
         if(l.responsable) q.push(l.responsable);
         if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
         L.push("- " + (l.action || l.constat).replace(/\.$/, "") +
@@ -5037,7 +5266,7 @@ function appliquerCR(paquet){
   if(!E.prevExport) E.prevExport = {};
   // Redessiner l'écran : sans cela, les tableaux resteraient ceux du CR précédent
   completerCalculs(); rendreSources(); rendrePerfs(); rendreCollab();
-  rendreAtterrissage(); rendreQs(); rendrePA(); rendreAnalyse(); majJauge();
+  rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePA(); rendreAnalyse(); majJauge();
   // Sauver comme brouillon courant
   memo.ecrire("crv:brouillon", JSON.stringify(E));
   const et = document.getElementById("etat_fdr") || document.getElementById("etat_oss");
@@ -5472,7 +5701,7 @@ function demarrerAppli(){
     reprendreReseau();
     fermerPrevExport(prevAvant);
     reprendreTsm(); completerCalculs();
-    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreAnalyse();
+    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendreAnalyse();
     sauver();
   };
 
@@ -5501,11 +5730,11 @@ function demarrerAppli(){
   rendrePerfs();
   rendreCollab();
   rendreAtterrissage();
-  rendreQs();
+  rendreQs(); rendreCocCom();
   rendrePA();
   rendreFDR();
   charger().then(() => {
-    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs();
+    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom();
     rendrePA(); rendreAnalyse(); majJauge();
   });
 }
