@@ -341,7 +341,7 @@ h2{justify-content:flex-start}
       </label>
       <button class="hbtn ghost" onclick="exportJSON()">Enregistrer</button>
       <button class="hbtn" id="btnPdf" onclick="exporterPDF()">Export PDF</button>
-      <button class="hbtn ghost" onclick="window.print()">Imprimer</button>
+      <button class="hbtn ghost" onclick="imprimerCR()" title="Imprime le compte rendu mis en forme, pas la page de saisie">Imprimer</button>
     </div>
     <div class="jauge" title="Points de contrôle renseignés"><i id="jauge"></i></div>
   </div>
@@ -563,7 +563,7 @@ h2{justify-content:flex-start}
 <!-- 6. SYNTHÈSE -->
 <section class="actions">
   <h2>Restitution</h2>
-  <p class="sous">Document de restitution : constats, analyses, plan d'action sur deux mois. 1800 mots maximum. Seul ce qui est hors objectif est repris, précédé de ce qui tient.</p>
+  <p class="sous">Document de restitution : constats, analyses, plan d'action à 30 jours. 1800 mots maximum. Seul ce qui est hors objectif est repris, précédé de ce qui tient.</p>
   <div class="barre" style="margin-top:0">
     <button class="btn" onclick="composerRestitution()">Composer la restitution</button>
     <button class="btn sec" onclick="copierZone('restitution', this)">Copier</button>
@@ -634,12 +634,12 @@ const CADRE = {
     {k:"responsable", nom:"Responsable", large:"12%", type:"ligne"},
     {k:"echeance",    nom:"Échéance",    large:"12%", type:"date"},
     {k:"indicateur",  nom:"Indicateur",  large:"12%", type:"ligne"},
-    {k:"priorite",    nom:"Priorité",    large:"8%",  type:"liste", options:["1","2","3"]}
+    {k:"priorite",    nom:"Priorité",    large:"8%",  type:"liste", options:["P1","P2","P3"]}
   ],
   consigne: [
     "Tu rédiges la restitution d'une journée de visite magasin pour un réseau d'accessoires de camping-car.",
     "Une action = un constat factuel, une action concrète et vérifiable, un responsable, une échéance, un indicateur de suivi.",
-    "Le plan d'action porte sur les deux mois suivants. Reste dans le vocabulaire du réseau,",
+    "Le plan d'action porte sur les 30 jours suivants. Reste dans le vocabulaire du réseau,",
     "pas d'action floue du type « sensibiliser l'équipe »."
   ].join(" "),
   motsMax: 1800,   // la restitution est un document, pas un mail : le plafond laisse de la marge
@@ -653,7 +653,7 @@ const TRAME = [
   {k:"analyse", nom:"Analyse",
    aide:"Perfs individuelles et globales du magasin, comparées à la tendance nationale. Sécurisation des KPI."},
   {k:"preconisations", nom:"Préconisations / Plan d'action",
-   aide:"Pour les deux mois suivants."},
+   aide:"Pour les 30 jours suivants."},
   {k:"priorites", nom:"3 priorités",
    aide:"Les trois enjeux à retenir."}
 ];
@@ -3723,10 +3723,23 @@ function synchroniserPA(){
 }
 
 /* les sujets voisins se suivent : on classe par thème, puis par source à l'intérieur */
+/* « 1 » saisi avant la v46 vaut P1 */
+function normPriorite(v){
+  const s = String(v || "").trim().toUpperCase();
+  if(!s) return "";
+  const m = s.match(/([123])/);
+  return m ? "P" + m[1] : s;
+}
+function rangPriorite(v){
+  const p = normPriorite(v);
+  return p === "P1" ? 0 : p === "P2" ? 1 : p === "P3" ? 2 : 3;
+}
+
 function classerPA(){
   E.pa.forEach((l,i) => { l._i = i; });
   E.pa.sort((a,b) =>
     rangTheme(themePA(a)) - rangTheme(themePA(b)) ||
+    rangPriorite(a.priorite) - rangPriorite(b.priorite) ||
     (a.ordre === undefined ? 9 : a.ordre) - (b.ordre === undefined ? 9 : b.ordre) ||
     a._i - b._i);
   E.pa.forEach(l => { delete l._i; });
@@ -3886,9 +3899,9 @@ function ajouterToutCocCom(btn){
 
 /* ===== plan d'action ===== */
 function echeanceDefaut(){
-  // la trame demande un plan d'action sur les deux mois suivants
+  // 30 jours : l'échéance tombe avant la visite suivante, elle se contrôle au passage d'après
   const base = E.date ? new Date(E.date) : new Date();
-  base.setMonth(base.getMonth() + 2);
+  base.setDate(base.getDate() + 30);
   return base.toISOString().slice(0,10);
 }
 function ajouterPA(ligne){
@@ -4439,12 +4452,31 @@ function composerRestitution(){
   else L.push("- À compléter : importez les fichiers pour alimenter l'analyse.");
   L.push("");
 
-  L.push("PLAN D'ACTION SUR LES DEUX MOIS");
+  L.push("PLAN D'ACTION — 30 JOURS");
   const prec = preconisations();
   if(prec.length){
+    // les P1 passent devant, en bloc : la hiérarchie se lit avant le détail
+    const queue = [l => {
+      const q = [];
+      if(l.indicateur) q.push(l.indicateur);
+      if(l.responsable) q.push(l.responsable);
+      if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
+      return q;
+    }][0];
+    const p1 = prec.filter(l => normPriorite(l.priorite) === "P1");
+    if(p1.length){
+      L.push("");
+      L.push("Priorités du mois");
+      p1.forEach(l => {
+        const q = queue(l);
+        L.push("- " + (l.action || l.constat).replace(/\.$/, "") +
+               (q.length ? " (" + q.join(", ") + ")" : "") + ".");
+      });
+    }
+
     // un thème = un bloc, quelle que soit la source de l'action
     const groupes = {}, ordreThemes = [];
-    prec.forEach(l => {
+    prec.filter(l => normPriorite(l.priorite) !== "P1").forEach(l => {
       const theme = themePA(l);
       if(!groupes[theme]){ groupes[theme] = []; ordreThemes.push(theme); }
       groupes[theme].push(l);
@@ -4460,7 +4492,8 @@ function composerRestitution(){
           q.push(l.indicateur);
         if(l.responsable) q.push(l.responsable);
         if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
-        L.push("- " + (l.action || l.constat).replace(/\.$/, "") +
+        const pr = normPriorite(l.priorite);
+        L.push("- " + (pr ? pr + " — " : "") + (l.action || l.constat).replace(/\.$/, "") +
                (q.length ? " (" + q.join(", ") + ")" : "") + ".");
       });
     });
@@ -4842,7 +4875,9 @@ function lignesTable(indicateurs, bloc){
   });
 }
 
-async function exporterPDF(){
+async function imprimerCR(){ return exporterPDF("impression"); }
+
+async function exporterPDF(mode){
   const btn = document.getElementById("btnPdf");
   const avant = btn ? btn.textContent : "";
   if(btn) btn.textContent = "…";
@@ -5042,7 +5077,13 @@ async function exporterPDF(){
     }
 
     const nom = "CRV_" + (E.magasin || "magasin").split("-")[0] + "_" + (E.date || "sans-date") + ".pdf";
-    doc.save(nom);
+    if(mode === "impression"){
+      // le document imprimé est le compte rendu, pas la page de saisie
+      doc.autoPrint();
+      const url = doc.output("bloburl");
+      const f = window.open(url, "_blank");
+      if(!f) doc.save(nom);      // fenêtre bloquée : on retombe sur le téléchargement
+    } else doc.save(nom);
     if(btn) btn.textContent = avant;
   }catch(err){
     if(btn) btn.textContent = avant;
