@@ -1464,7 +1464,10 @@ const ACCES = {
   empreinte: "0cfa74866a7af3e570f3fa29f2b7c3b00672bfd55df5b93cc6947c0a22f2e443", // code NA2026-27
   sel: "crv-na-2026",
   jeton: "d52bd11f76ba",
-  minutesInactivite: 20
+  // 0 = pas de verrouillage automatique : le compte rendu se construit au fil de
+  // la journée, une mise en veille en pleine visite ferait perdre une saisie en cours.
+  // Le bouton « Verrouiller » du bandeau reste disponible à la demande.
+  minutesInactivite: 0
 };
 
 const enc = new TextEncoder();
@@ -1508,6 +1511,19 @@ async function dechiffrer(txt, cle){
 }
 
 let minuterieVerrou = null;
+/* Enregistre tout de suite, sans attendre la temporisation habituelle, et prend
+   au passage la valeur du champ en cours de saisie : un téléphone qui se met en
+   veille ou un onglet laissé de côté ne doit rien faire perdre. */
+function sauverMaintenant(){
+  try{
+    const el = document.activeElement;
+    if(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName || "") && typeof Event === "function")
+      el.dispatchEvent(new Event("change", {bubbles:true}));
+  }catch(e){}
+  try{ clearTimeout(minuteur); }catch(e){}
+  try{ memo.ecrire("crv:brouillon", JSON.stringify(E)); }catch(e){}
+}
+
 function relancerVerrou(){
   if(!ACCES.actif || !ACCES.minutesInactivite) return;
   clearTimeout(minuterieVerrou);
@@ -5792,6 +5808,12 @@ if(ACCES.actif){
 // toute activité repousse le verrouillage automatique
 ["click","keydown","input","touchstart"].forEach(ev =>
   document.addEventListener(ev, relancerVerrou, {passive:true}));
+  // la page passe en arrière-plan, le téléphone se verrouille, l'onglet se ferme
+  document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState === "hidden") sauverMaintenant();
+  });
+  window.addEventListener("pagehide", sauverMaintenant);
+  window.addEventListener("beforeunload", sauverMaintenant);
 
 /* enregistrement du service worker : installation sur l'écran d'accueil et
    fonctionnement hors ligne. Sans lui, l'appli marche quand même. */
