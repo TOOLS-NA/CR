@@ -560,6 +560,36 @@ h2{justify-content:flex-start}
   </div>
 </section>
 
+<datalist id="delaisPA"></datalist>
+
+<!-- 5 bis. PLAN D'ACTION MAGASIN -->
+<section class="actions" id="blocPaMag">
+  <h2>Plan d'action magasin <span class="compte" id="comptePaMag"></span></h2>
+  <p class="sous">Document mensuel par magasin : chiffres clés, constat, leviers, pilotage des vendeurs, actions par rubrique, écarts Podium et évolution depuis le 1<sup>er</sup> septembre.</p>
+  <p class="sous" id="docsPaMag"></p>
+  <div class="barre" style="margin-top:0">
+    <button class="btn" onclick="composerPaMag()">Composer le plan d'action magasin</button>
+    <button class="btn sec" onclick="copierZone('paMag', this)">Copier</button>
+    <span class="etat" id="etatPaMag"></span>
+  </div>
+  <div style="max-width:620px;margin-bottom:10px">
+    <label class="champ" for="contextePaMag">Contexte de l'équipe (congés, départ, recrutement en cours…)</label>
+    <input type="text" id="contextePaMag" placeholder="Ex. : Anthony en CP · Clothilde seule en magasin · recrutement AC en cours"
+           onchange="E.contexteEquipe=this.value;sauver()">
+  </div>
+  <div class="barre couleurs">
+    <span class="sous" style="margin:0">Couleur du texte sélectionné</span>
+    <button class="pastille" style="background:#1C9C73" title="Vert" onclick="colorerZone('paMag','#1C9C73')"></button>
+    <button class="pastille" style="background:#E08A2E" title="Orange" onclick="colorerZone('paMag','#E08A2E')"></button>
+    <button class="pastille" style="background:#C0392B" title="Rouge" onclick="colorerZone('paMag','#C0392B')"></button>
+    <button class="pastille" style="background:#0E2C49" title="Bleu nuit" onclick="colorerZone('paMag','#0E2C49')"></button>
+    <button class="btn sec" onclick="colorerZone('paMag','')">Sans couleur</button>
+    <button class="btn sec" onclick="grasZone('paMag')"><b>G</b></button>
+  </div>
+  <div id="paMag" class="saisieRiche" style="min-height:320px" contenteditable="true"
+       oninput="E.paMag=this.innerHTML;sauver()"></div>
+</section>
+
 <!-- 6. SYNTHÈSE -->
 <section class="actions">
   <h2>Restitution</h2>
@@ -632,7 +662,7 @@ const CADRE = {
     {k:"constat",     nom:"Constat",     large:"26%", type:"texte"},
     {k:"action",      nom:"Action",      large:"28%", type:"texte"},
     {k:"responsable", nom:"Responsable", large:"12%", type:"ligne"},
-    {k:"echeance",    nom:"Échéance",    large:"12%", type:"date"},
+    {k:"echeance",    nom:"Échéance",    large:"12%", type:"echeance"},
     {k:"indicateur",  nom:"Indicateur",  large:"12%", type:"ligne"},
     {k:"priorite",    nom:"Priorité",    large:"8%",  type:"liste", options:["P1","P2","P3"]}
   ],
@@ -1257,7 +1287,7 @@ async function importerFichier(input, z){
   // la prévision du TSM se réapplique après chaque import : un export chargé
   // ensuite réécrirait sinon la colonne Prev
   reprendreTsm(); completerCalculs();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePaMag();
   rendreAnalyse(); sauver();
 }
 
@@ -1821,6 +1851,7 @@ const E = {
   qs:{},
   potentiel:{mois:null, prestaMois:null, collabs:{}},
   prevExport:{}, moisPrev:null, qsInfo:null, suiviUrl:"", potentielSource:null,
+  paMag:"", contexteEquipe:"",
   gmdr:{acc:[], presta:[], titre:""},
   sources:{},
   controles:{}, zones:{},
@@ -2190,7 +2221,7 @@ function integrerTable(table, z, et){
   et.className = "etat ok";
   et.textContent = detail;
   completerCalculs();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendreAnalyse(); sauver();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePaMag(); rendreAnalyse(); sauver();
 }
 
 /* ===== remise à zéro pour un nouveau compte rendu ===== */
@@ -2208,6 +2239,7 @@ function remiseAZero(){
   E.stock = {entree:null, sortie:null};
   E.encours = {nbre:null, valeur:null};
   E.pa = []; E.synthese = ""; E.dictee = ""; E.restitution = ""; E.echanges = [];
+  E.paMag = ""; E.contexteEquipe = "";
   E.interlocuteur = INTERLOCUTEURS[0];
   E.podium = {magasin:"", arrete:"", sections:{}};
   E.gmdr = {acc:[], presta:[], titre:""};
@@ -2221,7 +2253,8 @@ function remiseAZero(){
   // remise à blanc de l'interface
   const v = (id, val) => { const e = document.getElementById(id); if(e) e.value = val; };
   v("magasin",""); v("dateVisite", E.date); v("impressionSV","");
-  v("dictee",""); poserZone("restitution", ""); poserSynthese("");
+  v("dictee",""); poserZone("restitution", ""); poserZone("paMag", ""); poserSynthese("");
+  v("contextePaMag","");
   v("interlocuteur", E.interlocuteur);
   v("stEntree",""); v("stSortie",""); v("encNbre",""); v("encValeur","");
   const s = document.getElementById("stSolde"); if(s) s.textContent = "—";
@@ -2234,7 +2267,7 @@ function remiseAZero(){
     if(e){ e.className = "etat"; e.textContent = ""; }
   });
   majJauge(); majMots(); majMotsSynthese(); rendreDictees(); majApercuRestitution();
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePA(); rendreAnalyse(); rendreFDR();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePaMag(); rendrePA(); rendreAnalyse(); rendreFDR();
   sauver();
   etatMicro("Compte rendu vierge. Commencez par choisir le magasin et importer les fichiers.", "ok");
   if(window.scrollTo) window.scrollTo({top:0, behavior:"smooth"});
@@ -2256,7 +2289,7 @@ function viderChiffres(){
   E.potentiel = {mois:null, prestaMois:null, collabs:{}};
   E.prevExport = {}; E.moisPrev = null;
   E.sources = {};
-  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendreAnalyse(); sauver();
+  rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePaMag(); rendreAnalyse(); sauver();
 }
 function rendreSources(){
   const z = document.getElementById("sources");
@@ -3914,6 +3947,15 @@ function ajouterToutCocCom(btn){
 }
 
 /* ===== plan d'action ===== */
+/* L'échéance accepte une date ou un délai court : « Immédiat », « S+1 ».
+   Les comptes rendus d'avant la v49 portent une date ISO, qu'on affiche en clair. */
+const DELAIS_PA = ["Immédiat", "S+1", "S+2", "Fin du mois", "Prochaine visite"];
+function libEcheance(v){
+  const s = String(v || "").trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(s).toLocaleDateString("fr-FR");
+  return s;
+}
+
 function echeanceDefaut(){
   // 30 jours : l'échéance tombe avant la visite suivante, elle se contrôle au passage d'après
   const base = E.date ? new Date(E.date) : new Date();
@@ -3989,6 +4031,8 @@ function rendrePA(){
       const attr = "data-i='" + i + "' data-f='" + c.k + "' onchange='majPA(this)'";
       let ch;
       if(c.type === "texte") ch = "<textarea " + attr + ">" + v + "</textarea>";
+      else if(c.type === "echeance") ch = "<input type='text' list='delaisPA' " + attr +
+        " placeholder='jj/mm/aaaa ou Immédiat' value='" + esc(libEcheance(l.echeance)) + "'>";
       else if(c.type === "date") ch = "<input type='date' " + attr + " value='" + v + "'>";
       else if(c.k === "responsable") ch = champResponsable(i, l.responsable)
       else if(c.type === "liste") ch = "<select " + attr + ">" +
@@ -4440,6 +4484,192 @@ function troisPriorites(){
   return sortie.slice(0,3);
 }
 
+/* ===== Plan d'action magasin =====
+   Document mensuel par magasin, sur le modèle des plans d'action tribu :
+   les chiffres clés, le constat, les leviers, le pilotage des vendeurs, les
+   actions par rubrique, les écarts Podium et l'évolution depuis le 1er septembre.
+   Tout vient des fichiers déjà importés ; le TM reprend ensuite le texte à la main. */
+const DOCS_PA_MAG = [
+  {k:"mois",         nom:"Perfs du mois (ou export réseau Accessoires)"},
+  {k:"prestaMois",   nom:"Presta du mois (ou export réseau Prestation)"},
+  {k:"saison",       nom:"Perfs saison, avec les vendeurs"},
+  {k:"prestaSaison", nom:"Presta saison"},
+  {k:"oss",          nom:"Export OSS"},
+  {k:"gmdr",         nom:"Classement Podium (PDF)"}
+];
+function docsPaMagManquants(){
+  return DOCS_PA_MAG.filter(d => !E.sources[d.k] &&
+    !(d.k === "mois" && E.sources.reseauAcc) && !(d.k === "prestaMois" && E.sources.reseauPresta));
+}
+function rendrePaMag(){
+  const z = document.getElementById("docsPaMag");
+  if(!z) return;
+  const manque = docsPaMagManquants();
+  const liste = DOCS_PA_MAG.map(d => (docsPaMagManquants().some(m => m.k === d.k) ? "○ " : "● ") + d.nom).join("  ·  ");
+  z.className = manque.length ? "sous alerteNote" : "sous";
+  z.textContent = "Documents nécessaires — " + liste +
+    (manque.length ? ". Le document se compose quand même, les blocs sans données sont omis." : ". Tout est importé.");
+  const c = document.getElementById("contextePaMag");
+  if(c && document.activeElement !== c) c.value = E.contexteEquipe || "";
+  const d = document.getElementById("delaisPA");
+  if(d && !d.innerHTML) d.innerHTML = DELAIS_PA.map(x => "<option value='" + esc(x) + "'>").join("");
+}
+
+function composerPaMag(){
+  if(!E.magasin){ alert("Choisissez d'abord le magasin."); return; }
+  const L = [], g = (b,k,c) => (b && b[k]) ? b[k][c] : null;
+  const pct = v => v === null || v === undefined ? "—" : fmtEcart(v);
+  const dateFr = E.date ? new Date(E.date).toLocaleDateString("fr-FR") : "";
+
+  L.push(E.magasin.toUpperCase() + " — PLAN D'ACTION" + (dateFr ? " du " + dateFr : ""));
+  L.push("");
+
+  // 1. chiffres du mois et de la saison
+  const bloc = (titre, mois, saison) => {
+    if(!mois || !mois.ca || mois.ca.real === null) return;
+    L.push(titre);
+    L.push("- Mois : réalisé " + fmt(mois.ca.real,"eur") +
+           " · prévision " + fmt(mois.ca.prev,"eur") + " (" + pct(ecart(mois.ca.real, mois.ca.prev)) + ")" +
+           " · N-1 " + fmt(mois.ca.n1,"eur") + " (" + pct(ecart(mois.ca.real, mois.ca.n1)) + ").");
+    if(saison && saison.ca && saison.ca.real !== null)
+      L.push("- Saison à date : réalisé " + fmt(saison.ca.real,"eur") +
+             " · " + pct(ecart(saison.ca.real, saison.ca.n1)) + " sur N-1" +
+             " · " + pct(ecart(saison.ca.real, saison.ca.prev)) + " sur la prévision.");
+    L.push("");
+  };
+  bloc("ACCESSOIRES", E.mois, E.saison);
+  bloc("PRESTATION", E.prestaMois, E.prestaSaison);
+
+  // 2. indicateurs clés OSS, N-1 contre N
+  if(E.oss && E.oss.oss && E.oss.oss.n !== null){
+    L.push("INDICATEURS CLÉS");
+    const ligne = (nom, d, f) => {
+      if(!d || (d.n === null && d.n1 === null)) return;
+      const ev = f === "pct"
+        ? (d.n !== null && d.n1 !== null ? (d.n - d.n1) : null)
+        : ecart(d.n, d.n1);
+      L.push("- " + nom + " : " + fmt(d.n, f) + " contre " + fmt(d.n1, f) + " en N-1" +
+        (ev === null ? "" : " (" + (f === "pct"
+          ? (ev >= 0 ? "+" : "") + (ev*100).toFixed(1).replace(".",",") + " pt"
+          : fmtEcart(ev)) + ")") + ".");
+    };
+    const o = E.oss;
+    ligne("Facturé HT", o.facture, "eur");
+    ligne("dont One-Shot", o.os, "eur");
+    if(o.facture && o.os && o.facture.n !== null && o.os.n !== null)
+      ligne("dont portefeuille facturé",
+        {n: o.facture.n - o.os.n, n1: (o.facture.n1 !== null && o.os.n1 !== null) ? o.facture.n1 - o.os.n1 : null}, "eur");
+    ["prevCA","ossPrev","nbOs","pmOs","nbSigne","signe","signeOss","oss","ossHS"].forEach(k => {
+      const ind = IND_OSS.find(i => i.k === k);
+      if(ind) ligne(ind.nom, o[k], ind.fmt);
+    });
+    L.push("");
+  }
+
+  // 3. constat : ce que l'analyse a retenu
+  const constats = (E._constats || []);
+  const forts = constats.filter(x => x.epingle).concat(
+                constats.filter(x => !x.epingle && x.niveau === "alerte")).slice(0,4);
+  if(forts.length){
+    L.push("CONSTAT");
+    forts.forEach(x => L.push("- " + x.titre + " — " + x.detail));
+    L.push("");
+  }
+
+  // 4. leviers prioritaires : les P1, sinon les trois premières actions du plan
+  const p1 = E.pa.filter(l => normPriorite(l.priorite) === "P1");
+  const leviers = (p1.length ? p1 : E.pa).slice(0,3);
+  if(leviers.length){
+    L.push("LEVIERS PRIORITAIRES");
+    leviers.forEach((l,i) => L.push((i+1) + ". " + (l.action || l.constat).replace(/\.$/,"") +
+      (l.indicateur ? " (" + l.indicateur + ")" : "") + "."));
+    L.push("");
+  }
+
+  // 5. pilotage des vendeurs
+  const vend = (E.vendeurs.mois || []).filter(v => v.ca && v.ca.real > 0 && !ligneDeFlux(v.nom))
+    .sort((a,b) => b.ca.real - a.ca.real);
+  if(vend.length){
+    L.push("PILOTAGE VENDEURS");
+    vend.forEach(v => {
+      const nom = nomCourt(v.nom), cle = cleCollab(v.nom);
+      const sienne = E.pa.find(l => (l.responsable || "").indexOf(nom) === 0 ||
+        (l.constat || "").indexOf(nom) === 0 || (l.action || "").indexOf(nom) > -1);
+      L.push("- " + nom + " : " + fmt(v.ca.real,"eur") +
+        " · " + pct(ecart(v.ca.real, v.ca.prev)) + " sur la prévision" +
+        " · " + pct(ecart(v.ca.real, v.ca.n1)) + " sur N-1" +
+        (sienne ? " > " + (sienne.action || sienne.constat).replace(/\.$/,"") : "") + ".");
+    });
+    L.push("");
+  }
+  if(E.contexteEquipe){ L.push("CONTEXTE ÉQUIPE"); L.push("- " + E.contexteEquipe); L.push(""); }
+
+  // 6. le plan d'action, par thème, avec qui et quand
+  if(E.pa.length){
+    L.push("PLAN D'ACTION");
+    const groupes = {}, ordre = [];
+    E.pa.forEach(l => {
+      const t = themePA(l);
+      if(!groupes[t]){ groupes[t] = []; ordre.push(t); }
+      groupes[t].push(l);
+    });
+    ordre.sort((a,b) => rangTheme(a) - rangTheme(b));
+    ordre.forEach(t => {
+      L.push(t);
+      groupes[t].forEach(l => {
+        const q = [l.responsable, libEcheance(l.echeance)].filter(Boolean);
+        L.push("- " + (normPriorite(l.priorite) ? normPriorite(l.priorite) + " — " : "") +
+          (l.action || l.constat).replace(/\.$/,"") + (q.length ? " (" + q.join(", ") + ")" : "") + ".");
+      });
+    });
+    L.push("");
+  }
+
+  // 7. écarts Podium par famille
+  const croise = E._croise || [];
+  if(croise.length){
+    L.push("ÉCARTS PODIUM PAR FAMILLE");
+    L.push("Référence : moyenne des rangs 3 à 12 du réseau, les deux premiers écartés.");
+    croise.forEach(c => {
+      L.push(c.nom + (c.rangTot !== null ? " — " + c.rangTot + "e au national" : "") +
+        " · enjeu retenu " + fmt(c.enjeuPrio*1000,"eur"));
+      c.familles.filter(f => f.prioritaire).forEach(f =>
+        L.push("- " + f.nom + " : " + fmt(f.valeur*1000,"eur") +
+          (f.rang === null ? "" : " · rang " + f.rang) +
+          " · référence " + fmt(f.top10*1000,"eur") +
+          (f.enjeu > 0 ? " · écart " + fmt(f.enjeu*1000,"eur") : " · atteint")));
+    });
+    L.push("");
+  }
+
+  // 8. évolution depuis le 1er septembre
+  const saisonV = (E.vendeurs.saison || []).filter(v => v.ca && v.ca.real > 0 && !ligneDeFlux(v.nom))
+    .sort((a,b) => b.ca.real - a.ca.real);
+  if(saisonV.length){
+    L.push("DEPUIS LE 1ER SEPTEMBRE");
+    saisonV.forEach(v => L.push("- " + nomCourt(v.nom) + " : " + fmt(v.ca.real,"eur") +
+      " · " + pct(ecart(v.ca.real, v.ca.n1)) + " sur N-1" +
+      " · " + pct(ecart(v.ca.real, v.ca.prev)) + " sur la prévision."));
+    if(E.saison && E.saison.ca && E.saison.ca.real !== null)
+      L.push("- Total magasin : " + fmt(E.saison.ca.real,"eur") +
+        " · " + pct(ecart(E.saison.ca.real, E.saison.ca.n1)) + " sur N-1" +
+        " · " + pct(ecart(E.saison.ca.real, E.saison.ca.prev)) + " sur la prévision.");
+    L.push("");
+  }
+
+  E.paMag = texteVersHtml(L.join("\n").replace(/\n{3,}/g, "\n\n").trim());
+  poserZone("paMag", E.paMag);
+  const et = document.getElementById("etatPaMag");
+  const manque = docsPaMagManquants();
+  if(et){
+    et.className = "etat " + (manque.length ? "" : "ok");
+    et.textContent = manque.length
+      ? "Composé. Manque pour être complet : " + manque.map(m => m.nom).join(", ") + "."
+      : "Composé à partir de tous les documents.";
+  }
+  sauver();
+}
+
 function composerRestitution(){
   const mag = E.magasin || "le magasin";
   const dateFr = E.date ? new Date(E.date).toLocaleDateString("fr-FR") : "";
@@ -4476,7 +4706,7 @@ function composerRestitution(){
       const q = [];
       if(l.indicateur) q.push(l.indicateur);
       if(l.responsable) q.push(l.responsable);
-      if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
+      if(l.echeance) q.push(libEcheance(l.echeance));
       return q;
     }][0];
     const p1 = prec.filter(l => normPriorite(l.priorite) === "P1");
@@ -4507,7 +4737,7 @@ function composerRestitution(){
         if(l.indicateur && !new RegExp("^" + l.indicateur.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "i").test(theme))
           q.push(l.indicateur);
         if(l.responsable) q.push(l.responsable);
-        if(l.echeance) q.push(new Date(l.echeance).toLocaleDateString("fr-FR"));
+        if(l.echeance) q.push(libEcheance(l.echeance));
         const pr = normPriorite(l.priorite);
         L.push("- " + (pr ? pr + " — " : "") + (l.action || l.constat).replace(/\.$/, "") +
                (q.length ? " (" + q.join(", ") + ")" : "") + ".");
@@ -4721,7 +4951,7 @@ function composerSynthese(){
     if(prio.length)
       prio.forEach((l,i) => L.push((i+1) + ". " + (l.action || l.constat || "à définir") +
         (l.responsable ? " — " + l.responsable : "") +
-        (l.echeance ? ", pour le " + new Date(l.echeance).toLocaleDateString("fr-FR") : "")));
+        (l.echeance ? ", pour " + libEcheance(l.echeance) : "")));
     else
       L.push("1. À définir avec le DM.");
     L.push("");
@@ -5016,9 +5246,26 @@ async function exporterPDF(mode){
       titre("Plan d'action");
       table(["Constat","Action","Resp.","Échéance","Indicateur","Prio"],
         E.pa.map(l => [l.constat || "", l.action || "", l.responsable || "",
-          l.echeance ? new Date(l.echeance).toLocaleDateString("fr-FR") : "",
+          libEcheance(l.echeance),
           l.indicateur || "", l.priorite || ""]),
         {0:{cellWidth:46}, 1:{cellWidth:52}, 2:{cellWidth:18}, 3:{cellWidth:20}, 5:{cellWidth:10}});
+    }
+
+    // le plan d'action magasin, s'il a été composé
+    if(E.paMag){
+      doc.addPage(); y = M; titre("Plan d'action magasin");
+      paragraphesRiches(E.paMag).forEach(p => {
+        const t = p.texte.trim();
+        const titreBloc = EST_TITRE_SECTION.test(t) && t.length < 60;
+        const coul = versRvb(p.couleur) || (titreBloc ? [14,44,73] : [30,34,46]);
+        doc.setFont("helvetica", titreBloc ? "bold" : "normal");
+        doc.setFontSize(9.5);
+        doc.setTextColor(coul[0], coul[1], coul[2]);
+        if(titreBloc) y += 1.5;
+        doc.splitTextToSize(net(t), L).forEach(ligne => { saut(6); doc.text(ligne, M, y); y += 4.6; });
+        y += titreBloc ? 1 : 1.2;
+      });
+      doc.setTextColor(30,34,46); doc.setFont("helvetica","normal");
     }
 
     // la synthèse part par mail, elle n'a pas sa place dans l'export
@@ -5127,6 +5374,8 @@ async function charger(){
     rendreFDR();
     document.getElementById("dictee").value = E.dictee || "";
     poserZone("restitution", E.restitution || "");
+  poserZone("paMag", E.paMag || "");
+    poserZone("paMag", E.paMag || "");
     if(E.interlocuteur) document.getElementById("interlocuteur").value = E.interlocuteur;
     majMots();
     majApercuRestitution();
@@ -5310,6 +5559,7 @@ function appliquerCR(paquet){
   rendreFDR && rendreFDR();
   const d = document.getElementById("dictee"); if(d) d.value = E.dictee || "";
   poserZone("restitution", E.restitution || "");
+  poserZone("paMag", E.paMag || "");
   const i = document.getElementById("interlocuteur"); if(i && E.interlocuteur) i.value = E.interlocuteur;
   majMots && majMots();
   majApercuRestitution && majApercuRestitution();
@@ -5323,7 +5573,7 @@ function appliquerCR(paquet){
   if(!E.prevExport) E.prevExport = {};
   // Redessiner l'écran : sans cela, les tableaux resteraient ceux du CR précédent
   completerCalculs(); rendreSources(); rendrePerfs(); rendreCollab();
-  rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePA(); rendreAnalyse(); majJauge();
+  rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePaMag(); rendrePA(); rendreAnalyse(); majJauge();
   // Sauver comme brouillon courant
   memo.ecrire("crv:brouillon", JSON.stringify(E));
   const et = document.getElementById("etat_fdr") || document.getElementById("etat_oss");
@@ -5758,7 +6008,7 @@ function demarrerAppli(){
     reprendreReseau();
     fermerPrevExport(prevAvant);
     reprendreTsm(); completerCalculs();
-    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendreAnalyse();
+    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePaMag(); rendreAnalyse();
     sauver();
   };
 
@@ -5787,11 +6037,11 @@ function demarrerAppli(){
   rendrePerfs();
   rendreCollab();
   rendreAtterrissage();
-  rendreQs(); rendreCocCom();
+  rendreQs(); rendreCocCom(); rendrePaMag();
   rendrePA();
   rendreFDR();
   charger().then(() => {
-    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom();
+    rendreSources(); rendrePerfs(); rendreCollab(); rendreAtterrissage(); rendreQs(); rendreCocCom(); rendrePaMag();
     rendrePA(); rendreAnalyse(); majJauge();
   });
 }
