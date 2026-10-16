@@ -524,7 +524,8 @@ h2{justify-content:flex-start}
   <h2>COC commercial <span class="compte" id="compteCocCom"></span></h2>
   <p class="sous">Actions du COC commercial, classées par indice à améliorer. Les indices en écart d'après les chiffres du mois sont signalés et proposés en premier.</p>
   <div class="barre" style="margin-top:0">
-    <select id="indiceCocCom" style="max-width:420px" onchange="rendreCocComListe()"></select>
+    <select id="indiceCocCom" style="max-width:420px" onchange="ouvrirCocCom(true)"></select>
+    <button class="btn sec" id="btnVoirCocCom" onclick="ouvrirCocCom(true)">Voir les actions</button>
     <button class="btn sec" onclick="ajouterToutCocCom(this)">Tout ajouter au plan</button>
     <span class="etat" id="etatCocCom"></span>
   </div>
@@ -2239,7 +2240,7 @@ function remiseAZero(){
   E.stock = {entree:null, sortie:null};
   E.encours = {nbre:null, valeur:null};
   E.pa = []; E.synthese = ""; E.dictee = ""; E.restitution = ""; E.echanges = [];
-  E.paMag = ""; E.contexteEquipe = "";
+  E.paMag = ""; E.contexteEquipe = ""; cocComOuvert = false;
   E.interlocuteur = INTERLOCUTEURS[0];
   E.podium = {magasin:"", arrete:"", sections:{}};
   E.gmdr = {acc:[], presta:[], titre:""};
@@ -3885,14 +3886,33 @@ function rendreCocCom(){
   sel.innerHTML = cles.map(k => "<option value='" + esc(k) + "'" + (k === choisi ? " selected" : "") + ">" +
     (ecarts[k] ? "⚠ " : "") + esc(libCocCom(k)) + " (" + COC_COM[k].length + ")</option>").join("");
   const nb = Object.keys(ecarts).length;
+  if(nb) cocComOuvert = true;
   const t = document.getElementById("compteCocCom");
   if(t) t.textContent = nb ? nb + " indice" + (nb>1?"s":"") + " en écart" : "";
   rendreCocComListe();
 }
+/* Tant qu'aucun indice n'est en écart et que personne n'a demandé à voir la liste,
+   le pavé reste fermé : proposer 33 actions avant le moindre import n'a pas de sens. */
+let cocComOuvert = false;
+function ouvrirCocCom(oui){
+  cocComOuvert = oui !== false;
+  rendreCocComListe();
+}
+
 function rendreCocComListe(){
   const sel = document.getElementById("indiceCocCom"), z = document.getElementById("listeCocCom");
   if(!sel || !z) return;
-  const cle = sel.value, actions = COC_COM[cle] || [];
+  const enEcart = indicesCocComEnEcart();
+  const btn = document.getElementById("btnVoirCocCom");
+  if(btn) btn.hidden = cocComOuvert || Object.keys(enEcart).length > 0;
+  if(!cocComOuvert && !Object.keys(enEcart).length){
+    z.innerHTML = "<p class='vide'>Importez les perfs du mois : les indices en écart seront signalés ici. " +
+      "Vous pouvez aussi choisir un indice et cliquer sur « Voir les actions ».</p>";
+    return;
+  }
+  // repli si le navigateur n'a pas encore appliqué la sélection
+  const cle = COC_COM[sel.value] ? sel.value : (Object.keys(enEcart)[0] || Object.keys(COC_COM)[0]);
+  const actions = COC_COM[cle] || [];
   const constat = indicesCocComEnEcart()[cle];
   const dedans = new Set(E.pa.map(l => l.origine));
   z.innerHTML =
